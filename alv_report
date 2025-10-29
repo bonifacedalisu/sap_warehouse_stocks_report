@@ -1,0 +1,2602 @@
+*&********************************************************************&*
+* Program Name:  ZSCR_GSC_ZMMWH                                        *
+* Title:         Warehouse Stocks by Plant, Bin, MRP Type, Qty, etc.   *
+* Created by:	   DMDEVI                                                *
+* Created on:    27/04/2015                                            *
+* RICEF ID:      SC_IM_R_001                                           *
+* Release:       V1.0                                                  *
+* Transport:     DE1K922070                                            *
+************************************************************************
+* Purpose: This report will recreate the inefficient query from the    *
+*          legacy SAP system and include additional user friendly      *
+*          features that allow other transactions to be called from the*
+*          report                                                      *
+*&********************************************************************&*
+*----------------------------------------------------------------------*
+" 18/09/2025  BWAND  7000000821: 37251-CG_ZMMWH report in French
+" Copy to zscm_warehouse_stocks and adjust
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+
+REPORT  zscm_warehouse_stocks.
+TABLES: mara, makt, marc, mard, mbew, prps, mspr.
+
+CONSTANTS: gc_eng           TYPE spras VALUE 'E',
+           gc_error         TYPE symsgty VALUE 'E',
+           gc_en            TYPE ddlanguage VALUE 'EN',
+           gc_qkz           TYPE domname VALUE 'QKZ',
+           gc_kurst         TYPE kurst VALUE 'M',
+           gc_usd           TYPE waers VALUE 'USD',
+           gc_save          TYPE c    VALUE 'X',
+           gc_cre           TYPE shkzg VALUE 'S',
+           gc_101           TYPE bwart VALUE '101',
+           gc_colour(4)     VALUE 'C610',
+           gc_neg           TYPE c VALUE '-',
+           gc_null(4)       VALUE '0.00',
+           gc_matnr         TYPE slis_fieldname VALUE 'MATNR',
+           gc_maktx         TYPE slis_fieldname VALUE 'MAKTX',
+           gc_maktl         TYPE slis_fieldname VALUE 'MAKTL',
+           gc_lifnr         TYPE slis_fieldname VALUE 'LIFNR',
+           gc_emnfr         TYPE slis_fieldname VALUE 'EMNFR',
+           gc_werks         TYPE slis_fieldname VALUE 'WERKS',
+           gc_bismt         TYPE slis_fieldname VALUE 'BISMT',
+           gc_lgort         TYPE slis_fieldname VALUE 'LGORT',
+           gc_lgfsb         TYPE slis_fieldname VALUE 'LGFSB',
+           gc_dismm         TYPE slis_fieldname VALUE 'DISMM',
+           gc_minbe         TYPE slis_fieldname VALUE 'MINBE',
+           gc_mabst         TYPE slis_fieldname VALUE 'MABST',
+           gc_insme         TYPE slis_fieldname VALUE 'INSME',
+           gc_labst         TYPE slis_fieldname VALUE 'LABST',
+           gc_menge         TYPE slis_fieldname VALUE 'MENGE',
+           gc_meins         TYPE slis_fieldname VALUE 'MEINS',
+           gc_lgpbe         TYPE slis_fieldname VALUE 'LGPBE',
+           gc_mfrnr         TYPE slis_fieldname VALUE 'MFRNR',
+           gc_mfrpn         TYPE slis_fieldname VALUE 'MFRPN',
+           gc_verpr         TYPE slis_fieldname VALUE 'VERPR',
+           gc_waers         TYPE slis_fieldname VALUE 'WAERS',
+           gc_vmver         TYPE slis_fieldname VALUE 'VMVER',
+           gc_grupc         TYPE slis_fieldname VALUE 'GRUPC',
+           gc_ersda         TYPE slis_fieldname VALUE 'ERSDA',
+           gc_ernam         TYPE slis_fieldname VALUE 'ERNAM',
+           gc_maktg         TYPE slis_fieldname VALUE 'MAKTG',
+           gc_ekgrp         TYPE slis_fieldname VALUE 'EKGRP',
+           gc_speme         TYPE slis_fieldname VALUE 'SPEME',
+           gc_einme         TYPE slis_fieldname VALUE 'EINME',
+           gc_lsobs         TYPE slis_fieldname VALUE 'LSOBS',
+           gc_sobsl         TYPE slis_fieldname VALUE 'SOBSL',
+           gc_laeda         TYPE slis_fieldname VALUE 'LAEDA',
+           gc_aenam         TYPE slis_fieldname VALUE 'AENAM',
+           gc_disgr         TYPE slis_fieldname VALUE 'DISGR',
+           gc_insmk         TYPE slis_fieldname VALUE 'INSMK',
+           gc_instx         TYPE slis_fieldname VALUE 'INSTX',
+           gc_bwtar         TYPE slis_fieldname VALUE 'BWTAR',
+           gc_maabc         TYPE slis_fieldname VALUE 'MAABC',
+           gc_tresqty       TYPE slis_fieldname VALUE 'TRESQTY',
+           gc_dispo         TYPE slis_fieldname VALUE 'DISPO',
+           gc_disls         TYPE slis_fieldname VALUE 'DISLS',
+           gc_plifz         TYPE slis_fieldname VALUE 'PLIFZ',
+           gc_webaz         TYPE slis_fieldname VALUE 'WEBAZ',
+           gc_mstae         TYPE slis_fieldname VALUE 'MSTAE',
+           gc_mmsta         TYPE slis_fieldname VALUE 'MMSTA',
+           gc_bstrf         TYPE slis_fieldname VALUE 'BSTRF',
+           gc_tragr         TYPE slis_fieldname VALUE 'TRAGR',
+           gc_ladgr         TYPE slis_fieldname VALUE 'LADGR',
+           gc_prctr         TYPE slis_fieldname VALUE 'PRCTR',
+           gc_spart         TYPE slis_fieldname VALUE 'SPART',
+           gc_kautb         TYPE slis_fieldname VALUE 'KAUTB',
+           gc_kzkri         TYPE slis_fieldname VALUE 'KZKRI',
+           gc_ekwsl         TYPE slis_fieldname VALUE 'EKWSL',
+           gc_taxim         TYPE slis_fieldname VALUE 'TAXIM',
+           gc_mtvfp         TYPE slis_fieldname VALUE 'MTVFP',
+           gc_stoff         TYPE slis_fieldname VALUE 'STOFF',
+           gc_raube         TYPE slis_fieldname VALUE 'RAUBE',
+           gc_bwtty         TYPE slis_fieldname VALUE 'BWTTY',
+           gc_bklas         TYPE slis_fieldname VALUE 'BKLAS',
+           gc_sobkz         TYPE slis_fieldname VALUE 'SOBKZ',
+           gc_pspnr         TYPE slis_fieldname VALUE 'PSPNR',
+           gc_lbkum         TYPE slis_fieldname VALUE 'LBKUM',
+           gc_ssqss         TYPE slis_fieldname VALUE 'SSQSS',
+           gc_qzgtp         TYPE slis_fieldname VALUE 'QZGTP',
+           gc_qssys         TYPE slis_fieldname VALUE 'QSSYS',
+           gc_klabs         TYPE slis_fieldname VALUE 'KLABS',
+           gc_bwesb         TYPE slis_fieldname VALUE 'BWESB',
+           gc_trame         TYPE slis_fieldname VALUE 'TRAME',
+           gc_sllab         TYPE slis_fieldname VALUE 'SLLAB',
+           gc_letztabg      TYPE slis_fieldname VALUE 'LETZTABG',
+           gc_dlinl         TYPE slis_fieldname VALUE 'DLINL',
+           gc_lbkum_m       TYPE slis_fieldname VALUE 'LBKUM_M',
+           gc_salk3         TYPE slis_fieldname VALUE 'SALK3',
+           gc_ostkval       TYPE slis_fieldname VALUE 'OSTKVAL',
+           gc_overstock_qty TYPE slis_fieldname VALUE 'OVERSTOCK_QTY',
+           gc_disp          TYPE sy-ucomm VALUE '&DISP',
+           gc_chng          TYPE sy-ucomm VALUE '&CHNG',
+           gc_ovrvw         TYPE sy-ucomm VALUE '&OVRVW',
+           gc_matmv         TYPE sy-ucomm VALUE '&MATMV',
+           gc_creql         TYPE sy-ucomm VALUE '&CREQL',
+           gc_smrp          TYPE sy-ucomm VALUE '&SMRP',
+           gc_dispsl        TYPE sy-ucomm VALUE '&DISPSL',
+           gc_maintsl       TYPE sy-ucomm VALUE '&MAINTSL',
+           gc_inforec       TYPE sy-ucomm VALUE '&INFOREC',
+           gc_matas         TYPE sy-ucomm VALUE '&MATAS',
+           gc_refresh       TYPE sy-ucomm VALUE 'REFRESH',
+           gc_matanreci     TYPE sy-ucomm VALUE '&MATANRECI',
+           gc_purvalan      TYPE sy-ucomm VALUE '&PURVALAN',
+           gc_matanal       TYPE sy-ucomm VALUE '&MATANAL',
+           gc_openres       TYPE sy-ucomm VALUE '&OPENRES',
+           gc_openreq       TYPE sy-ucomm VALUE '&OPENREQ',
+           gc_openpo        TYPE sy-ucomm VALUE '&OPENPO',
+           gc_mm03          TYPE sy-tcode VALUE 'MM03',
+           gc_mm02          TYPE sy-tcode VALUE 'MM02',
+           gc_mmbe          TYPE sy-tcode VALUE 'MMBE',
+           gc_mb51          TYPE sy-tcode VALUE 'MB51',
+           gc_md03          TYPE sy-tcode VALUE 'MD03',
+           gc_me01          TYPE sy-tcode VALUE 'ME01',
+           gc_me03          TYPE sy-tcode VALUE 'ME03',
+           gc_md04          TYPE sy-tcode VALUE 'MD04',
+           gc_me13          TYPE sy-tcode VALUE 'ME13',
+           gc_mc9           TYPE sy-tcode VALUE 'MC.9',
+           gc_mca           TYPE sy-tcode VALUE 'MC.A',
+           gc_mc$4          TYPE sy-tcode VALUE 'MC$4',
+           gc_mcbe          TYPE sy-tcode VALUE 'MCBE',
+           gc_mb25          TYPE sy-tcode VALUE 'MB25',
+           gc_me5a          TYPE sy-tcode VALUE 'ME5A',
+           gc_legend        TYPE sy-ucomm VALUE '&INFO',
+           gc_memoryid      TYPE memoryid VALUE 'MAT',
+           gc_vendor        TYPE memoryid VALUE 'LIF',
+           gc_plant         TYPE memoryid VALUE 'WRK',
+           gc_me2n          TYPE sy-tcode VALUE 'ME2N',
+           gc_fmatnr        TYPE slis_fieldname VALUE 'MATNR',
+           gc_zstatus       TYPE slis_fieldname VALUE 'ZSTATUS',
+           gc_mrp_area      TYPE slis_fieldname VALUE 'MRP_AREA',
+           gc_blank_index   TYPE lvc_index VALUE '0000000000',
+           gc_dismm_v1      TYPE dismm VALUE 'V1',
+           gc_dismm_pd      TYPE dismm VALUE 'PD',
+           gc_dismm_nd      TYPE dismm VALUE 'ND'.
+
+TYPES: BEGIN OF t_mara,
+         matnr TYPE matnr,
+         ersda TYPE ersda,
+         ernam TYPE ernam,
+         laeda TYPE laeda,
+         aenam TYPE aenam,
+         bismt TYPE bismt,
+         maktl TYPE matkl,
+         meins TYPE meins,
+         ekwsl TYPE ekwsl,
+         raube TYPE raube,
+         tragr TYPE tragr,
+         stoff TYPE stoff,
+         spart TYPE spart,
+         mstae TYPE mstae,
+         mfrpn TYPE mfrpn,
+         mfrnr TYPE mfrnr,
+       END OF t_mara,
+
+       BEGIN OF t_marc,
+         matnr TYPE matnr,
+         werks TYPE werks_d,
+         lvorm TYPE lvowk,
+         mmsta TYPE mmsta,
+         maabc TYPE maabc,
+         kzkri TYPE kzkri,
+         ekgrp TYPE ekgrp,
+         dismm TYPE dismm,
+         dispo TYPE dispo,
+         plifz TYPE plifz,
+         webaz TYPE webaz,
+         disls TYPE disls,
+         sobsl TYPE sobsl,
+         minbe TYPE minbe,
+         bstrf TYPE bstrf,
+         mabst TYPE mabst,
+         insmk TYPE insmk_mat,
+         ssqss TYPE qsspur,
+         umlmc TYPE umlme,
+         ladgr TYPE ladgr,
+         mtvfp TYPE mtvfp,
+         kautb TYPE kautb,
+         prctr TYPE prctr,
+         trame TYPE trame,
+         disgr TYPE disgr,
+         qzgtp TYPE qzgtyp,
+         qssys TYPE qssys_soll,
+         lgfsb TYPE lgfsb,
+         diber TYPE diber,
+         bwesb TYPE bwesb,
+       END OF t_marc,
+
+       BEGIN OF t_mbew,
+         matnr TYPE matnr,  "NR
+         bwkey TYPE bwkey,  "NR
+         bwtar TYPE bwtar_d,
+         lbkum TYPE lbkum,
+         salk3 TYPE salk3,
+         verpr TYPE verpr,
+         bklas TYPE bklas,
+         vmver TYPE vmver,
+         bwtty TYPE bwtty_d,
+       END OF t_mbew,
+
+       BEGIN OF t_qbew,
+         matnr TYPE matnr,  "NR
+         bwkey TYPE bwkey,  "NR
+         bwtar TYPE bwtar_d,
+         sobkz TYPE sobkz,
+         pspnr TYPE ps_psp_pnr,
+         verpr TYPE verpr,
+       END OF t_qbew,
+
+       BEGIN OF t_resb,
+         rsnum TYPE rsnum,
+         rspos TYPE rspos,
+         rsart TYPE rsart,
+         matnr TYPE matnr,
+         werks TYPE werks_d,
+         lgort TYPE lgort_d,
+         bdmng TYPE bdmng,
+         meins TYPE meins,
+         shkzg TYPE shkzg,
+       END OF t_resb,
+
+       BEGIN OF t_lfa1,
+         lifnr TYPE lifnr,
+         emnfr TYPE emnfr,
+       END OF t_lfa1,
+
+       BEGIN OF t_s032,
+         matnr    TYPE matnr,
+         werks    TYPE werks_d,
+         lgort    TYPE lgort_d,
+         letztabg TYPE letztabg,
+       END OF t_s032,
+       BEGIN OF t_mssl,
+         matnr TYPE matnr,
+         werks TYPE werks_d,
+         sobkz TYPE sobkz,
+         lifnr TYPE lifnr,
+         sllab TYPE labst,
+       END OF t_mssl,
+
+       BEGIN OF t_dd07t,
+         domname    TYPE domname,
+         ddlanguage TYPE ddlanguage,
+         ddtext     TYPE val_text,
+         domvalue_l TYPE domvalue_l,
+       END OF t_dd07t,
+
+       BEGIN OF t_mlan,
+         matnr TYPE matnr,
+         taxim TYPE taxim1,
+       END OF t_mlan,
+
+       BEGIN OF t_stxh,
+         tdname TYPE tdobname,
+       END OF t_stxh,
+
+       BEGIN OF t_t001k,
+         bwkey TYPE bwkey,
+         bukrs TYPE bukrs,
+       END OF t_t001k,
+
+       BEGIN OF t_t001,
+         bukrs TYPE bukrs,
+         waers TYPE waers,
+       END OF t_t001,
+
+       BEGIN OF t_tcurr,
+         kurst TYPE kurst_curr,
+         fcurr TYPE fcurr_curr,
+         tcurr TYPE tcurr_curr,
+         gdatu TYPE gdatu_inv,
+         ukurs TYPE ukurs_curr,
+       END OF t_tcurr,
+
+       BEGIN OF t_ekpo,
+         ebeln TYPE ebeln,
+         ebelp TYPE ebelp,
+         loekz TYPE eloek,
+         matnr TYPE matnr,
+         werks TYPE ewerk,
+         lgort TYPE lgort_d,
+         menge TYPE bstmg,
+       END OF t_ekpo,
+
+       BEGIN OF t_eban,
+         banfn TYPE banfn,
+         bnfpo TYPE bnfpo,
+         loekz TYPE eloek,
+         matnr TYPE matnr,
+         werks TYPE ewerk,
+         lgort TYPE lgort_d,
+         menge TYPE bstmg,
+       END OF t_eban,
+
+       BEGIN OF t_eket,
+         ebeln TYPE ebeln,
+         ebelp TYPE ebelp,
+         menge TYPE etmen,
+         wemng TYPE weemg,
+       END OF t_eket,
+
+       BEGIN OF t_potext,
+         tdline TYPE tline-tdline,
+       END OF t_potext,
+
+       BEGIN OF t_data,
+         line_colour(4),
+         matnr          TYPE matnr,
+         werks          TYPE werks_d,
+         lgort          TYPE lgort_d,
+         maktx          TYPE maktx,
+         bismt          TYPE bismt,
+         maktl          TYPE matkl,
+         lifnr          TYPE lifnr,
+         emnfr          TYPE emnfr,
+         lgfsb          TYPE lgfsb,
+         dismm          TYPE dismm,
+         minbe          TYPE minbe,
+         mabst          TYPE mabst,
+         insme          TYPE insme,
+         labst          TYPE labst,
+         menge          TYPE bestbest2, " MB_ADD_PURCHASE_ORDER_QUANTITY
+         meins          TYPE meins,
+         lgpbe          TYPE lgpbe,
+         mfrnr          TYPE mfrnr,
+         mfrpn          TYPE mfrpn,
+         verpr          TYPE verpr,
+         waers          TYPE waers,
+         vmver          TYPE verpr,
+         grupc          TYPE waers,
+         ersda          TYPE ersda,
+         ernam          TYPE ernam,
+         maktg          TYPE string,
+         ekgrp          TYPE ekgrp,
+         speme          TYPE speme,
+         einme          TYPE einme,
+         lsobs          TYPE lsobs,
+         sobsl          TYPE sobsl,
+         laeda          TYPE laeda,
+         aenam          TYPE aenam,
+         disgr          TYPE disgr,
+         insmk          TYPE insmk_mat,
+         instx          TYPE val_text,
+         bwtar          TYPE bwtar_d,
+         maabc          TYPE maabc,
+         tresqty        TYPE bdmng,
+         dispo          TYPE dispo,
+         disls          TYPE disls,
+         plifz          TYPE plifz,
+         webaz          TYPE webaz,
+         mstae          TYPE mstae,
+         mmsta          TYPE mmsta,
+         bstrf          TYPE bstrf,
+         tragr          TYPE tragr,
+         ladgr          TYPE ladgr,
+         prctr          TYPE prctr,
+         spart          TYPE spart,
+         kautb          TYPE kautb,
+         kzkri          TYPE kzkri,
+         ekwsl          TYPE ekwsl,
+         taxim          TYPE taxim1,
+         mtvfp          TYPE mtvfp,
+         stoff          TYPE stoff,
+         raube          TYPE raube,
+         bwtty          TYPE bwtty_d,
+         bklas          TYPE bklas,
+         sobkz          TYPE sobkz,
+         pspnr          TYPE ps_psp_pnr,
+         lbkum          TYPE lbkum,
+         ssqss          TYPE qsspur,
+         qzgtp          TYPE qzgtyp,
+         qssys          TYPE qssys_soll,
+         klabs          TYPE klabs,
+         bwesb          TYPE bwesb,
+         trame          TYPE trame,
+         sllab          TYPE labst,
+         letztabg       TYPE letztabg,
+         dlinl          TYPE dlinl,
+         lbkum_m        TYPE lbkum,
+         salk3          TYPE salk3,
+         grpval         TYPE salk3, "Group Currency Value
+         ostkval        TYPE p DECIMALS 2,
+         gostkval       TYPE p DECIMALS 2, "Group Currency Value
+         zstatus        TYPE string,
+         mrp_area       TYPE string,
+         overstock_qty  TYPE mabst,
+       END OF t_data.
+
+TYPES: BEGIN OF t_mdma,
+         matnr TYPE matnr,
+         berid TYPE berid,
+         werks TYPE werkdp,
+         dismm TYPE dismm,
+         dispo TYPE dispo,
+         disgr TYPE disgr,
+         minbe TYPE minbe,
+         disls TYPE disls,
+         bstrf TYPE bstrf,
+         mabst TYPE mabst,
+         loekz TYPE loekz,
+         plifz TYPE plifz,
+       END OF t_mdma.
+
+TYPES: BEGIN OF t_ord_stock,
+         matnr TYPE matnr,
+         werks TYPE ewerk,
+         lgort TYPE lgort_d,
+         stock TYPE bstmg,
+       END OF t_ord_stock.
+
+TYPES: BEGIN OF t_res_stock,
+         matnr TYPE matnr,
+         werks TYPE ewerk,
+         lgort TYPE lgort_d,
+         stock TYPE bdmng,
+       END OF t_res_stock.
+
+DATA: gt_mara     TYPE SORTED TABLE OF t_mara WITH UNIQUE KEY matnr,
+      gt_marc     TYPE SORTED TABLE OF t_marc WITH UNIQUE KEY matnr werks,
+      gt_mard     TYPE SORTED TABLE OF mard WITH UNIQUE KEY matnr werks lgort WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lgort,
+      gt_mdma     TYPE TABLE OF t_mdma WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr berid werks,
+      gt_mdlv     TYPE STANDARD TABLE OF mdlv WITH NON-UNIQUE SORTED KEY k2 COMPONENTS werzg ortzg,
+      gt_mbew     TYPE SORTED TABLE OF t_mbew WITH UNIQUE KEY matnr bwkey bwtar,
+      gt_qbew     TYPE SORTED TABLE OF t_qbew WITH UNIQUE KEY matnr bwkey bwtar sobkz pspnr,
+      gt_mspr     TYPE STANDARD TABLE OF mspr WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lgort,
+      gt_mkol     TYPE STANDARD TABLE OF mkol WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lgort,
+      gt_mchb     TYPE STANDARD TABLE OF mchb WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lgort,
+      gt_mssl     TYPE TABLE OF t_mssl WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lifnr,
+      gt_stxh     TYPE TABLE OF t_stxh WITH UNIQUE SORTED KEY k2 COMPONENTS tdname,
+      gt_resb     TYPE TABLE OF t_resb WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks WITH NON-UNIQUE SORTED KEY k3 COMPONENTS matnr werks lgort,
+      gt_makt     TYPE SORTED TABLE OF makt WITH UNIQUE KEY matnr,
+      gt_dd07t    TYPE TABLE OF t_dd07t WITH NON-UNIQUE SORTED KEY k2 COMPONENTS domvalue_l,
+      gt_mlan     TYPE TABLE OF t_mlan WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr,
+      gt_t001k    TYPE SORTED TABLE OF t_t001k WITH UNIQUE KEY bwkey,
+      gt_t001     TYPE SORTED TABLE OF t_t001 WITH UNIQUE KEY bukrs,
+*      gt_tcurr TYPE TABLE OF t_tcurr,
+      gt_ekpo     TYPE TABLE OF t_ekpo WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks,
+      gt_eban     TYPE TABLE OF t_eban WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks,
+      gt_eket     TYPE TABLE OF t_eket WITH NON-UNIQUE SORTED KEY k2 COMPONENTS ebeln ebelp,
+      gt_data     TYPE TABLE OF t_data,
+      gt_data_itm TYPE TABLE OF t_data,
+      gt_s032     TYPE TABLE OF t_s032 WITH NON-UNIQUE SORTED KEY k2 COMPONENTS matnr werks lgort.
+
+DATA: gt_iseg  TYPE STANDARD TABLE OF iseg.
+
+DATA : w_variant TYPE disvariant.
+
+" Constant for each traffic light:
+CONSTANTS: c_green  TYPE iconname VALUE 'ICON_GREEN_LIGHT',
+           c_yellow TYPE iconname VALUE 'ICON_YELLOW_LIGHT',
+           c_red    TYPE iconname VALUE 'ICON_RED_LIGHT',
+           c_proj   TYPE iconname VALUE 'ICON_LINKED_DOCUMENT',
+           c_mrp    TYPE iconname VALUE 'ICON_CHECKBOX',
+           c_out    TYPE iconname VALUE 'ICON_LIGHT_OUT'.
+
+* ALV Objects
+*----------------------------------------------------------------------*
+CLASS: lcl_hdr_alvgrid_def DEFINITION DEFERRED,
+       lcl_det_alvgrid_def DEFINITION DEFERRED,
+       lcl_warehouse_stocks DEFINITION DEFERRED.
+
+* Main custom container instance
+DATA: cl_custom_container TYPE REF TO cl_gui_custom_container.
+* Easy splitter instance
+DATA: cl_easy_splitter TYPE REF TO cl_gui_easy_splitter_container.
+* ALV grid declarations
+DATA:
+  hdr_grid_main TYPE REF TO lcl_hdr_alvgrid_def,
+  det_grid_main TYPE REF TO lcl_det_alvgrid_def.
+DATA: gt_hdr_fieldcat TYPE lvc_t_fcat,
+      gs_hdr_fieldcat LIKE LINE OF gt_hdr_fieldcat.
+DATA: gt_dtl_fieldcat TYPE lvc_t_fcat WITH HEADER LINE,
+      gs_dtl_fieldcat TYPE lvc_s_fcat.
+
+CLASS lcl_hdr_alvgrid_def DEFINITION INHERITING FROM zcl_alv_grid.
+  PUBLIC SECTION.
+    DATA lv_index TYPE sy-tabix.
+    METHODS:
+      handle_double_click REDEFINITION,
+      handle_user_command REDEFINITION,
+      handle_button_click REDEFINITION.
+  PRIVATE SECTION.
+ENDCLASS.                    "lcl_hdr_alvgrid_def DEFINITION
+
+CLASS lcl_det_alvgrid_def DEFINITION INHERITING FROM zcl_alv_grid.
+  PUBLIC SECTION.
+    METHODS: handle_double_click REDEFINITION.
+  PRIVATE SECTION.
+ENDCLASS.                    "lcl_det_alvgrid_def DEFINITION
+
+CLASS lcl_warehouse_stocks DEFINITION.
+
+ENDCLASS.
+
+CLASS lcl_hdr_alvgrid_def IMPLEMENTATION.
+  METHOD handle_double_click.
+    DATA: lt_cells    TYPE lvc_t_cell,
+          ls_cells    TYPE lvc_s_cell,
+          lt_row      TYPE lvc_t_roid,
+          ls_row      TYPE lvc_s_roid,
+          ls_variant  TYPE disvariant,
+          lwa_data    TYPE t_data,
+          lt_data_itm TYPE TABLE OF t_data.
+    DATA l_tabix TYPE i.
+* add row selection
+    CALL METHOD hdr_grid_main->get_selected_rows
+      IMPORTING
+        et_row_no = lt_row.
+
+    CALL METHOD hdr_grid_main->get_selected_cells
+      IMPORTING
+        et_cell = lt_cells.
+    CALL METHOD hdr_grid_main->check_changed_data.
+    READ TABLE lt_cells INDEX 1 INTO ls_cells.
+*   check if a row was selected
+    IF sy-subrc <> 0.
+      READ TABLE lt_row INDEX 1 INTO ls_row.
+      IF sy-subrc = 0.
+        lv_index = ls_row-row_id.
+      ELSE.
+        EXIT.
+      ENDIF.
+    ENDIF.
+    REFRESH lt_data_itm  .
+    IF ls_cells-row_id-index = gc_blank_index.
+      lv_index = gc_blank_index.
+    ELSE.
+      READ TABLE gt_data INTO lwa_data INDEX ls_cells-row_id-index.
+      CHECK sy-subrc = 0.
+      LOOP AT gt_data_itm INTO lwa_data WHERE matnr = lwa_data-matnr AND werks = lwa_data-werks AND lgort = lwa_data-lgort.
+        APPEND lwa_data TO lt_data_itm.
+      ENDLOOP.
+      CALL METHOD det_grid_main->set_table_for_first_display
+        EXPORTING
+          i_save    = 'U'
+        CHANGING
+          it_outtab = lt_data_itm[].
+    ENDIF.
+  ENDMETHOD.                    "handle_double_click
+
+  METHOD handle_user_command.
+    " if full item list selected, display full list of items
+    CASE e_ucomm.
+      WHEN 'FULL_ITM_LIST'.
+        CALL METHOD det_grid_main->set_table_for_first_display
+          EXPORTING
+            i_save    = 'U'
+          CHANGING
+            it_outtab = gt_data_itm[].
+    ENDCASE.
+  ENDMETHOD.                    "handle_user_command
+
+  METHOD handle_button_click.
+    DATA: lt_cells    TYPE lvc_t_cell,
+          ls_cells    TYPE lvc_s_cell,
+          lt_row      TYPE lvc_t_roid,
+          ls_row      TYPE lvc_s_roid,
+          ls_variant  TYPE disvariant,
+          lwa_data    TYPE t_data,
+          lt_data_itm TYPE TABLE OF t_data,
+          lv_name     TYPE tdobname.
+    DATA l_tabix TYPE i.
+    TYPES: BEGIN OF ty_alvout,
+             tdname TYPE tdobname,
+             tdline TYPE tdline,
+           END OF ty_alvout.
+    DATA:lo_alv       TYPE REF TO cl_salv_table,
+         ls_alv_disp  TYPE REF TO cl_salv_display_settings,
+         ls_alv_col   TYPE REF TO cl_salv_columns_table,
+         lr_functions TYPE REF TO cl_salv_functions_list.
+    DATA: lt_txt_output  TYPE TABLE OF tline,
+          lwa_txt_output TYPE tline,
+          lt_alvout      TYPE TABLE OF ty_alvout,
+          lwa_stxh       TYPE stxh,
+          lwa_alvout     TYPE ty_alvout.
+* add row selection
+    CALL METHOD hdr_grid_main->get_selected_rows
+      IMPORTING
+        et_row_no = lt_row.
+    CALL METHOD hdr_grid_main->get_selected_cells
+      IMPORTING
+        et_cell = lt_cells.
+    READ TABLE lt_cells INDEX 1 INTO ls_cells.
+*   check if a row was selected
+    IF sy-subrc <> 0.
+      READ TABLE lt_row INDEX 1 INTO ls_row.
+      IF sy-subrc = 0.
+        lv_index = ls_row-row_id.
+      ELSE.
+        EXIT.
+      ENDIF.
+    ENDIF.
+    " Get the material of the Row selected
+    IF ls_cells-row_id-index = gc_blank_index.
+      lv_index = gc_blank_index.
+    ELSE.
+      READ TABLE gt_data INTO lwa_data INDEX ls_cells-row_id-index.
+      CHECK sy-subrc = 0.
+      " add padded zeeros
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+        EXPORTING
+          input        = lwa_data-matnr
+        IMPORTING
+          output       = lwa_data-matnr
+        EXCEPTIONS
+          length_error = 1
+          OTHERS       = 2.
+      IF sy-subrc <> 0.
+* Implement suitable error handling here
+      ENDIF.
+      lv_name = lwa_data-matnr.
+* Selecting the header of the text of object
+      SELECT SINGLE tdobject FROM stxh INTO lwa_stxh "#EC CI_ALL_FIELDS_NEEDED
+        WHERE tdname EQ lv_name
+        AND tdobject EQ 'MATERIAL'
+        AND tdid EQ 'BEST'
+        AND tdspras EQ sy-langu.
+      IF sy-subrc NE 0.
+        MESSAGE 'No Purchase Order Text exist for this material'(t04) TYPE 'S'.
+        EXIT.
+      ENDIF.
+      " Read the long text
+      CALL FUNCTION 'READ_TEXT'
+        EXPORTING
+*         CLIENT   = SY-MANDT
+          id       = 'BEST'
+          language = sy-langu
+          name     = lv_name
+          object   = 'MATERIAL'
+        TABLES
+          lines    = lt_txt_output.
+      CHECK sy-subrc = 0.
+*removing Special characters in Long text.
+*** Special charc = #_$£%&^*~@
+      SELECT SINGLE low
+        FROM tvarvc
+        INTO @DATA(lv_special)
+        WHERE name = 'ZSCM_SPEC_CHARS'.
+      DATA(lv_len) = strlen( lv_special ).
+      " Prepare the output table
+      LOOP AT lt_txt_output INTO lwa_txt_output.
+        PERFORM remove_special_chars USING lwa_txt_output-tdline
+                                           lv_special
+                                           lv_len.
+        lwa_alvout-tdname = lwa_data-matnr.
+        lwa_alvout-tdline = lwa_txt_output-tdline.
+        APPEND  lwa_alvout TO lt_alvout.
+        CLEAR lwa_alvout.
+      ENDLOOP.
+      " display output in a pop up alv grid
+      CHECK lt_alvout[] IS NOT INITIAL.
+      TRY.
+          cl_salv_table=>factory(
+            IMPORTING
+              r_salv_table = lo_alv
+            CHANGING
+              t_table      = lt_alvout[] ).
+        CATCH cx_salv_msg.
+      ENDTRY.
+      lr_functions = lo_alv->get_functions( ).
+      lr_functions->set_all( 'X' ).
+      IF lo_alv IS BOUND.
+        " display output in a pop up
+        lo_alv->set_screen_popup(
+          start_column = '25'
+          end_column  = '150'
+          start_line  = '6'
+          end_line    = '40' ).
+        ls_alv_disp = lo_alv->get_display_settings( ).
+        ls_alv_disp->set_fit_column_to_table_size( value = 'X' ).
+        ls_alv_col = lo_alv->get_columns( ).
+        ls_alv_col->set_optimize( value = 'X' ).
+        lo_alv->display( ).
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.                    "handle_button_click
+ENDCLASS.                    "lcl_hdr_alvgrid_def IMPLEMENTATION
+
+CLASS lcl_det_alvgrid_def IMPLEMENTATION.
+  METHOD handle_double_click.
+  ENDMETHOD.                    "handle_double_click
+ENDCLASS.                    "lcl_det_alvgrid_def DEFINITION
+
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE TEXT-000.
+PARAMETERS : cb_det TYPE c NO-DISPLAY DEFAULT 'X'.
+SELECTION-SCREEN END OF BLOCK b0.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+SELECT-OPTIONS: s_matnr FOR mara-matnr,
+                s_maktx FOR makt-maktg,
+                s_matkl FOR mara-matkl,
+                s_mfrnr FOR mara-mfrnr,
+                s_mfrpn FOR mara-mfrpn.
+SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-002.
+SELECT-OPTIONS: s_werks FOR marc-werks OBLIGATORY,
+                s_ekgrp FOR marc-ekgrp,
+                s_dispo FOR marc-dispo,
+                s_dismm FOR marc-dismm,
+                s_disgr FOR marc-disgr,
+                s_kzkri FOR marc-kzkri,
+                s_stoff FOR mara-stoff,
+                s_lgfsb FOR marc-lgfsb,
+                s_sobsl FOR marc-sobsl.
+PARAMETERS: cb_lvorm AS CHECKBOX.
+SELECTION-SCREEN END OF BLOCK b2.
+SELECTION-SCREEN BEGIN OF BLOCK b3 WITH FRAME TITLE TEXT-003.
+SELECT-OPTIONS: s_lgort FOR mard-lgort,
+                s_diskz FOR mard-diskz,
+                s_lgpbe FOR mard-lgpbe,
+                s_maabc FOR marc-maabc,
+                s_insmk FOR marc-insmk.
+SELECTION-SCREEN END OF BLOCK b3.
+SELECTION-SCREEN BEGIN OF BLOCK b4 WITH FRAME TITLE TEXT-004.
+SELECT-OPTIONS: s_bwtty FOR mbew-bwtty,
+                s_bwtar FOR mbew-bwtar,
+                s_bklas FOR mbew-bklas,
+                s_posid FOR prps-posid,
+                s_pspnr FOR prps-pspnr NO-DISPLAY,
+                s_sobkz FOR mspr-sobkz.
+SELECTION-SCREEN END OF BLOCK b4.
+SELECTION-SCREEN BEGIN OF BLOCK b5 WITH FRAME TITLE TEXT-081.
+
+PARAMETERS : p_layout LIKE disvariant-variant.
+PARAMETERS : p_detlay LIKE disvariant-variant.
+SELECTION-SCREEN END OF BLOCK b5.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_layout.
+  PERFORM f_get_variant CHANGING p_layout.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_detlay.
+  PERFORM f_get_variant CHANGING p_detlay.
+*--- AT Selection Screen
+AT SELECTION-SCREEN.
+**-- security auth check
+  PERFORM f_plant_authorization.
+
+START-OF-SELECTION.
+* To set the PF status for ALV o/p screen
+  SET PF-STATUS 'ZMMWH_PF'.
+* Logic to fetch the data from database tables
+  PERFORM f_get_data.
+* Summarize the data from varioys tables into final internal table
+  PERFORM f_calc_data.
+* To dsiplay tha data in ALV format
+  PERFORM f_alv.
+
+END-OF-SELECTION.
+
+
+CLASS lcl_warehouse_stocks IMPLEMENTATION.
+
+ENDCLASS.
+
+FORM f_get_data .
+  DATA: lv_dummy TYPE c.
+  DATA: lt_marc  TYPE SORTED TABLE OF t_marc WITH UNIQUE KEY matnr werks,
+        lwa_marc TYPE t_marc,
+        lt_stxh  TYPE TABLE OF t_stxh,
+        lwa_stxh TYPE t_stxh,
+        lwa_mara TYPE t_mara.
+  DATA: lt_mdma1 TYPE TABLE OF t_mdma,
+        lt_marc1 TYPE STANDARD TABLE OF t_marc.
+* As plant is mandatory field on the selection-screen, data is fetched from MARC table
+  SELECT matnr werks lvorm mmsta maabc kzkri ekgrp dismm dispo plifz webaz disls sobsl minbe bstrf mabst insmk ssqss umlmc ladgr mtvfp
+         kautb prctr trame disgr qzgtp qssys lgfsb diber bwesb
+    FROM  marc
+    INTO  TABLE lt_marc
+    WHERE  werks IN s_werks
+     AND  matnr IN s_matnr
+     AND  ekgrp IN s_ekgrp
+     AND  dispo IN s_dispo
+     AND  sobsl IN s_sobsl
+     AND  disgr IN s_disgr
+     AND  kzkri IN s_kzkri
+     AND  lgfsb IN s_lgfsb
+  AND  maabc IN s_maabc
+  AND  insmk IN s_insmk.
+  IF sy-subrc EQ 0.
+    CLEAR lv_dummy.
+  ENDIF.
+  IF cb_lvorm IS INITIAL.
+    DELETE lt_marc[] WHERE lvorm EQ abap_true.
+  ENDIF.
+  IF s_dismm IS NOT INITIAL.
+    lt_marc1[] = lt_marc[].
+    DELETE lt_marc1 WHERE diber NE abap_true.
+    IF lt_marc1[] IS NOT INITIAL.
+      SELECT matnr berid werks dismm dispo disgr minbe disls bstrf mabst loekz plifz
+         FROM mdma
+         INTO CORRESPONDING FIELDS OF TABLE lt_mdma1
+         FOR ALL ENTRIES IN lt_marc1
+         WHERE matnr EQ lt_marc1-matnr
+      AND werks   IN s_werks
+      AND dismm   IN s_dismm.
+      IF sy-subrc = 0.
+        REFRESH lt_marc[].
+        SELECT matnr werks lvorm mmsta maabc kzkri ekgrp dismm dispo plifz webaz disls sobsl minbe bstrf mabst insmk ssqss umlmc ladgr mtvfp
+          kautb prctr trame disgr qzgtp qssys lgfsb diber bwesb
+          FROM  marc
+          INTO  TABLE lt_marc
+          FOR ALL ENTRIES IN lt_mdma1
+          WHERE werks IN s_werks
+            AND ( matnr IN s_matnr AND ( matnr EQ lt_mdma1-matnr OR  dismm IN s_dismm ) )
+            AND ekgrp IN s_ekgrp
+            AND dispo IN s_dispo
+            AND sobsl IN s_sobsl
+            AND disgr IN s_disgr
+            AND kzkri IN s_kzkri
+            AND lgfsb IN s_lgfsb
+        AND maabc IN s_maabc
+        AND insmk IN s_insmk.                      "#EC CI_NO_TRANSFORM
+      ENDIF.
+    ENDIF.
+  ENDIF.
+  IF lt_marc[] IS NOT INITIAL.
+    SELECT budat matnr werks zldat FROM iseg  "#EC CI_ALL_FIELDS_NEEDED
+      INTO CORRESPONDING FIELDS OF TABLE gt_iseg
+      FOR ALL ENTRIES IN lt_marc
+    WHERE matnr = lt_marc-matnr
+    AND   werks = lt_marc-werks.                   "#EC CI_NO_TRANSFORM
+    IF sy-subrc = 0.
+      SORT gt_iseg BY matnr werks ASCENDING budat DESCENDING.
+    ENDIF.
+  ENDIF.
+* To restrict the entries that have Deletion Indicator set if the Checkbox is unchecked
+  IF lt_marc[] IS NOT INITIAL.
+* Based on the data fetched from MARC, data is fetched from MARA based on all the MATNRs in MARC
+    SELECT  a~matnr, a~ersda, a~ernam, a~laeda, a~aenam, a~bismt, a~matkl, a~meins, a~ekwsl, a~raube, a~tragr, a~stoff, a~spart, a~mstae, a~mfrpn, a~mfrnr "#EC CI_NO_TRANSFORM
+      FROM  mara AS a
+      INNER JOIN makt AS b
+        ON a~matnr = b~matnr
+      FOR ALL ENTRIES IN @lt_marc
+      WHERE  a~matnr EQ @lt_marc-matnr
+        AND  a~matkl IN @s_matkl
+        AND  a~mfrnr IN @s_mfrnr
+        AND  a~mfrpn IN @s_mfrpn
+        AND  a~stoff IN @s_stoff
+        AND b~maktg IN @s_maktx
+    AND b~spras EQ @sy-langu
+    INTO TABLE @gt_mara.                           "#EC CI_NO_TRANSFORM
+    IF sy-subrc EQ 0.
+      " only when material level filter exist.
+      IF s_matkl IS NOT INITIAL OR s_mfrnr IS NOT INITIAL OR s_mfrpn IS NOT INITIAL OR s_stoff IS NOT INITIAL OR s_maktx IS NOT INITIAL.
+        LOOP AT lt_marc INTO lwa_marc USING KEY primary_key.
+          READ TABLE gt_mara WITH TABLE KEY matnr = lwa_marc-matnr TRANSPORTING NO FIELDS.
+          IF sy-subrc EQ 0.
+            APPEND lwa_marc TO gt_marc.
+          ENDIF.
+        ENDLOOP.
+      ELSE.
+        gt_marc[] = lt_marc[].
+      ENDIF.
+    ELSE.
+      MESSAGE 'No Material exist for given selection'(t01) TYPE 'S' DISPLAY LIKE 'E'.
+      EXIT.
+    ENDIF.
+  ENDIF.
+  IF gt_mara[] IS NOT INITIAL.
+* Data retrieval from MAKT for Material Description
+    SELECT *
+      FROM makt
+      INTO TABLE gt_makt
+      FOR ALL ENTRIES IN gt_mara
+      WHERE matnr EQ gt_mara-matnr
+    AND maktg IN s_maktx
+    AND spras EQ sy-langu.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+* Data fetched from MSSL for Unrestricted Value stock
+    SELECT matnr werks sobkz lifnr sllab
+      FROM mssl
+      INTO TABLE gt_mssl
+      FOR ALL ENTRIES IN gt_mara
+    WHERE matnr EQ gt_mara-matnr
+    AND lifnr EQ gt_mara-mfrnr.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+* Data for Tax Indicator from MLAN
+    SELECT matnr taxim
+      FROM mlan
+      INTO TABLE gt_mlan
+    FOR ALL ENTRIES IN gt_mara
+    WHERE matnr EQ gt_mara-matnr.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+    LOOP AT gt_mara INTO lwa_mara.
+      lwa_stxh-tdname = lwa_mara-matnr.
+      APPEND lwa_stxh TO lt_stxh.
+    ENDLOOP.
+    IF lt_stxh[] IS NOT INITIAL.
+* Material Purchase order text
+      SELECT tdname
+        FROM stxh
+        INTO TABLE gt_stxh
+        FOR ALL ENTRIES IN lt_stxh
+        WHERE tdobject EQ 'MATERIAL'
+          AND tdname EQ lt_stxh-tdname
+      AND tdid EQ 'BEST'
+      AND tdspras EQ sy-langu.
+    ENDIF.
+  ENDIF.
+  IF gt_marc[] IS NOT INITIAL.
+* Logic to retrieve On Stock Quantity from EKPO
+    SELECT ebeln ebelp loekz matnr werks lgort menge
+      FROM ekpo
+      INTO TABLE gt_ekpo
+      FOR ALL ENTRIES IN gt_marc
+      WHERE werks EQ gt_marc-werks
+        AND matnr EQ gt_marc-matnr
+    AND lgort IN s_lgort    "change for inc0156835
+    AND loekz EQ space.
+    IF gt_ekpo[] IS NOT INITIAL.
+      SELECT ebeln ebelp menge wemng
+        FROM eket
+        INTO TABLE gt_eket
+        FOR ALL ENTRIES IN gt_ekpo
+      WHERE ebeln = gt_ekpo-ebeln
+      AND ebelp = gt_ekpo-ebelp.                   "#EC CI_NO_TRANSFORM
+    ENDIF.
+* retrieve PR qty
+    SELECT banfn bnfpo loekz matnr werks lgort menge
+      FROM eban
+      INTO TABLE gt_eban
+      FOR ALL ENTRIES IN gt_marc
+      WHERE werks EQ gt_marc-werks
+    AND matnr EQ gt_marc-matnr
+    AND loekz EQ space.
+* Logic to retrieve the company code currency
+    SELECT bwkey bukrs FROM t001k INTO TABLE gt_t001k
+    FOR ALL ENTRIES IN gt_marc
+    WHERE bwkey EQ gt_marc-werks.
+    IF gt_t001k[] IS NOT INITIAL.
+      SELECT bukrs waers FROM t001 INTO TABLE gt_t001
+      FOR ALL ENTRIES IN gt_t001k
+      WHERE bukrs EQ gt_t001k-bukrs.
+    ENDIF.
+* Data is fetched to get the fixed value texts for Domain 'QKZ'
+    SELECT domname ddlanguage ddtext domvalue_l
+      FROM dd07t
+      INTO TABLE gt_dd07t
+    WHERE domname = gc_qkz
+    AND ddlanguage = gc_en.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+* Data is fetched from RESB to calculate the OPEN POs to calculate 'Total Reserved Qty.'
+    SELECT rsnum rspos rsart matnr werks lgort bdmng shkzg FROM resb INTO TABLE gt_resb
+      FOR ALL ENTRIES IN gt_marc
+      WHERE matnr EQ gt_marc-matnr
+        AND werks EQ gt_marc-werks
+    AND kzear EQ ' '
+    AND xloek EQ space.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+* Data retrieval from the table MARD based on the MATNR and WERKS
+    SELECT * FROM mard INTO TABLE gt_mard
+      FOR ALL ENTRIES IN gt_marc
+      WHERE werks EQ gt_marc-werks
+        AND matnr EQ gt_marc-matnr
+        AND lgort IN s_lgort
+    AND diskz IN s_diskz
+    AND lgpbe IN s_lgpbe.
+    IF sy-subrc EQ 0.
+      DELETE gt_mard WHERE lvorm EQ abap_true.
+      CLEAR lv_dummy.
+    ENDIF.
+    IF gt_mard[] IS NOT INITIAL.
+* Fetch MRP Area
+      SELECT * FROM mdlv INTO TABLE gt_mdlv
+        FOR ALL ENTRIES IN gt_mard
+      WHERE werzg EQ gt_mard-werks
+      AND ortzg EQ gt_mard-lgort.
+* Fetch Storage location level MRP Area
+      SELECT matnr berid werks dismm dispo disgr minbe disls mabst bstrf loekz plifz FROM mdma
+        INTO CORRESPONDING FIELDS OF TABLE gt_mdma
+      FOR ALL ENTRIES IN gt_marc
+      WHERE matnr = gt_marc-matnr.
+*      Fetching logic for Last Goods Issue date
+      SELECT matnr werks lgort letztabg FROM s032 INTO TABLE gt_s032
+        FOR ALL ENTRIES IN gt_mard
+        WHERE matnr EQ gt_mard-matnr
+      AND werks EQ gt_mard-werks
+      AND lgort EQ gt_mard-lgort.
+      IF sy-subrc EQ 0.
+        CLEAR lv_dummy.
+      ENDIF.
+    ENDIF.
+* Data retrieval from MBEW based on the MATNR
+    SELECT matnr bwkey bwtar lbkum salk3 verpr bklas vmver bwtty FROM mbew INTO TABLE gt_mbew
+      FOR ALL ENTRIES IN gt_marc
+      WHERE matnr EQ gt_marc-matnr
+        AND bwkey EQ gt_marc-werks
+        AND bwtar IN s_bwtar
+    AND bklas IN s_bklas
+    AND bwtty IN s_bwtty.
+    IF sy-subrc EQ 0.
+      CLEAR lv_dummy.
+    ENDIF.
+* Data retrieval from QBEW to get valuation for Q stock
+    SELECT matnr bwkey bwtar sobkz pspnr verpr FROM qbew INTO  TABLE gt_qbew
+      FOR  ALL ENTRIES IN gt_marc
+      WHERE  matnr EQ gt_marc-matnr
+    AND bwkey EQ gt_marc-werks
+    AND bwtar IN s_bwtar.
+* Get the non Project stock at storage location level
+    SELECT ceinm charg cinsm clabs cretm cspem cumlm lgort matnr werks FROM mchb INTO CORRESPONDING FIELDS OF TABLE gt_mchb "#EC CI_ALL_FIELDS_NEEDED
+      FOR ALL ENTRIES IN gt_marc
+      WHERE  matnr EQ gt_marc-matnr
+    AND werks EQ gt_marc-werks
+    AND  lgort IN s_lgort.
+* Get the non Project stock at storage location level
+    SELECT * FROM mspr INTO TABLE gt_mspr
+      FOR ALL ENTRIES IN gt_marc
+      WHERE  matnr EQ gt_marc-matnr
+    AND werks EQ gt_marc-werks
+    AND  lgort IN s_lgort.
+* Get the Special Stocks from Vendor
+    SELECT * FROM mkol INTO TABLE gt_mkol
+      FOR ALL ENTRIES IN gt_marc
+      WHERE  matnr EQ gt_marc-matnr
+    AND werks EQ gt_marc-werks
+    AND  lgort IN s_lgort.
+  ENDIF.
+ENDFORM.                    " F_GET_DATA
+
+FORM f_alv .
+  CONSTANTS lc_header TYPE boolean VALUE abap_true.
+  CONSTANTS lc_detail TYPE boolean VALUE abap_true.
+  DATA: lt_fcat         TYPE slis_t_fieldcat_alv,
+        lt_fcat_itm     TYPE slis_t_fieldcat_alv,
+        gs_hdr_fieldcat TYPE lvc_s_fcat,
+        lv_repid        TYPE sy-repid,
+        lwa_layout      TYPE slis_layout_alv,
+        lwa_keyinfo     TYPE slis_keyinfo_alv.
+
+  lwa_layout-colwidth_optimize = gc_save.
+  lwa_layout-info_fieldname = 'LINE_COLOUR'.
+  lv_repid = sy-repid.
+
+  CLEAR: gs_hdr_fieldcat, lt_fcat.
+  REFRESH lt_fcat.
+
+  PERFORM f_add_fieldcatalog USING gc_zstatus TEXT-082 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_matnr TEXT-006 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_bismt TEXT-097 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_werks TEXT-002 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lgort TEXT-011 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_mrp_area TEXT-088 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_bwtar TEXT-039 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_sobkz TEXT-077 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_pspnr TEXT-078 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_maktx TEXT-007 lc_header lc_detail. "ENHC0012681 SGADUGULA
+  PERFORM f_add_fieldcatalog USING gc_maktl TEXT-008 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_lifnr TEXT-009 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lgfsb TEXT-012 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_dismm TEXT-013 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_sobsl TEXT-095 lc_header space."Added by NRBIREDDY for ENHC0011649
+  PERFORM f_add_fieldcatalog USING gc_minbe TEXT-014 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_mabst TEXT-015 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_insme TEXT-016 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_labst TEXT-017 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_menge TEXT-018 lc_header space. " lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_meins TEXT-019 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lgpbe TEXT-020 lc_header lc_detail. "ENHC0012681 SGADUGULA
+  PERFORM f_add_fieldcatalog USING gc_mfrnr TEXT-021 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_mfrpn TEXT-022 lc_header lc_detail. "ENHC0012681 SGADUGULA
+  PERFORM f_add_fieldcatalog USING gc_verpr TEXT-023 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_waers TEXT-024 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_vmver TEXT-025 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_grupc TEXT-026 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_ersda TEXT-027 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_ernam TEXT-028 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_maktg TEXT-029 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_ekgrp TEXT-030 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_speme TEXT-031 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lsobs TEXT-032 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_laeda TEXT-034 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_aenam TEXT-035 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_disgr TEXT-036 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_insmk TEXT-037 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_instx TEXT-038 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_maabc TEXT-040 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_tresqty TEXT-041 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_dispo TEXT-042 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_disls TEXT-043 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_plifz TEXT-044 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_webaz TEXT-045 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_mstae TEXT-046 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_mmsta TEXT-047 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_bstrf TEXT-048 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_tragr TEXT-049 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_ladgr TEXT-050 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_prctr TEXT-051 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_spart TEXT-052 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_kautb TEXT-053 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_kzkri TEXT-054 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_ekwsl TEXT-055 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_taxim TEXT-056 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_mtvfp TEXT-057 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_stoff TEXT-058 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_raube TEXT-059 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_bwtty TEXT-060 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_bklas TEXT-061 space lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lbkum TEXT-062 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_ssqss TEXT-063 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_qzgtp TEXT-064 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_qssys TEXT-065 lc_header space.
+  PERFORM f_add_fieldcatalog USING gc_klabs TEXT-066 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_bwesb TEXT-067 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_trame TEXT-068 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_einme TEXT-096 lc_header lc_detail.     "For <INC0385511><DE1K947553>
+  PERFORM f_add_fieldcatalog USING gc_sllab TEXT-070 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_letztabg TEXT-084 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_dlinl TEXT-085 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_lbkum_m TEXT-074 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_salk3 TEXT-075 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING 'GRPVAL'(092) 'Group Currency Value'(091) lc_header lc_detail."+DE1K934061 ENHC0011448-Group currency
+  PERFORM f_add_fieldcatalog USING gc_ostkval TEXT-076 lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING 'GOSTKVAL'(093) 'Over Stock Value-Group'(094) lc_header lc_detail.
+  PERFORM f_add_fieldcatalog USING gc_overstock_qty TEXT-090 lc_header lc_detail.
+
+  SORT gt_data BY matnr werks lgort.
+  SORT gt_data_itm BY matnr werks lgort bwtar pspnr.
+
+  CALL SCREEN '9000'.
+
+ENDFORM.                    " F_ALV
+
+FORM pf_status USING rt_extab TYPE slis_t_extab.
+  SET PF-STATUS  'ZMMWH_PF'.
+ENDFORM.                    "pf_status
+
+FORM f_get_variant CHANGING c_layout.
+  DATA: lw_variant TYPE disvariant,
+        l_exit     TYPE char1.
+  lw_variant-report = sy-repid.
+  CALL FUNCTION 'REUSE_ALV_VARIANT_F4'
+    EXPORTING
+      is_variant = lw_variant
+      i_save     = 'A'
+    IMPORTING
+      e_exit     = l_exit
+      es_variant = lw_variant
+    EXCEPTIONS
+      not_found  = 2.
+  IF sy-subrc = 2.
+    MESSAGE ID sy-msgid TYPE 'S' NUMBER sy-msgno
+    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ELSE.
+    IF l_exit EQ space.
+      c_layout = lw_variant-variant.
+
+      IF NOT c_layout IS INITIAL.
+        PERFORM f_get_w_variant.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    " GET_VARIANT
+
+FORM f_get_w_variant .
+  w_variant-report      = sy-repid.
+  w_variant-handle      = space.
+  w_variant-log_group   = space.
+  w_variant-username    = space.
+  w_variant-variant     = p_layout.
+  w_variant-text        = space.
+  w_variant-dependvars  = space.
+ENDFORM.                    " GET_W_VARIANT
+
+FORM f_calc_data.
+  DATA: lwa_mara       TYPE t_mara,
+        lwa_marc       TYPE t_marc,
+        lwa_mard       TYPE mard,
+        lwa_mbew       TYPE t_mbew,
+        lwa_qbew       TYPE t_qbew,
+        lwa_mchb       TYPE mchb,
+        lwa_mspr       TYPE mspr,
+        lwa_mkol       TYPE mkol,
+        lwa_lfa1       TYPE t_lfa1,
+        lwa_mssl       TYPE t_mssl,
+        lwa_resb       TYPE t_resb,
+        lwa_makt       TYPE makt,
+        lwa_dd07t      TYPE t_dd07t,
+        lwa_mlan       TYPE t_mlan,
+        lwa_t001k      TYPE t_t001k,
+        lwa_t001       TYPE t_t001,
+        lwa_tcurr      TYPE t_tcurr,
+        lwa_ekpo       TYPE t_ekpo,
+        lwa_eket       TYPE t_eket,
+        lwa_data       TYPE t_data,
+        lwa_data_itm   TYPE t_data,
+        lwa_s032       TYPE t_s032,
+        lwa_mdlv       TYPE mdlv,
+        lwa_mdma       TYPE t_mdma,
+        lwa_ord_stock  TYPE t_ord_stock,
+        lt_ord_stock   TYPE SORTED TABLE OF t_ord_stock WITH UNIQUE KEY matnr werks lgort,
+        lwa_res_stock  TYPE t_res_stock,
+        lt_res_stock   TYPE SORTED TABLE OF t_res_stock WITH UNIQUE KEY matnr werks lgort,
+        lt_txt_output  TYPE TABLE OF tline,
+        lwa_txt_output TYPE tline,
+        lwa_iseg       TYPE iseg.
+  DATA: lv_ind1             TYPE sy-tabix,
+        lv_ind2             TYPE sy-tabix,
+        lv_ind3             TYPE sy-tabix,
+        lv_ind4             TYPE sy-tabix,
+        lv_ind5             TYPE sy-tabix,
+        lv_ind6             TYPE sy-tabix,
+        lv_app              TYPE c,
+        lv_first_sloc       TYPE c,
+        lv_menge            TYPE bstmg,
+        lv_menge_lgort      TYPE bstmg,
+        lv_bwtar            TYPE bstmg,
+        lv_tresqty          TYPE bdmng,
+        lv_tot_stk_qnt      TYPE mabst,
+        lv_tot_stk_qnt_mard TYPE mabst,
+        lv_stk_onhand_mard  TYPE mabst,
+        lv_stk_onhand_marc  TYPE mabst,
+        lv_avg_price        TYPE verpr,
+        lv_pur_txt          TYPE string,
+        lv_trfc_lgt         TYPE iconname.
+  CLEAR: lwa_mara.
+* Looping MARA table entries into the final table
+  CLEAR: lwa_marc.
+* Looping MARC table
+  LOOP AT gt_marc INTO lwa_marc USING KEY primary_key.
+    CLEAR: lwa_mara.
+    CLEAR lv_app.
+* deleted line items to be showed with red colour
+    IF lwa_marc-lvorm IS NOT INITIAL.
+      lwa_data-line_colour = gc_colour.
+    ENDIF.
+    " Add Traffic lights logic. Default everything to no light for now. the exact logic will be built in Phase-2 ( Aug15 deployment)
+    CALL FUNCTION 'ICON_CREATE'
+      EXPORTING
+        name                  = c_out
+      IMPORTING
+        result                = lwa_data-zstatus
+      EXCEPTIONS
+        icon_not_found        = 1
+        outputfield_too_short = 2
+        OTHERS                = 3.
+    lwa_data-grupc = gc_usd.
+    " get the Material master data
+    READ TABLE gt_mara INTO lwa_mara WITH KEY matnr = lwa_marc-matnr.
+    IF sy-subrc EQ 0.
+      WRITE lwa_mara-matnr TO lwa_data-matnr NO-ZERO.
+*      lwa_data-matnr = lwa_mara-matnr.
+      lwa_data-ersda = lwa_mara-ersda.
+      lwa_data-ernam = lwa_mara-ernam.
+      lwa_data-laeda = lwa_mara-laeda.
+      lwa_data-aenam = lwa_mara-aenam.
+      lwa_data-bismt = lwa_mara-bismt.
+      lwa_data-maktl = lwa_mara-maktl.
+      lwa_data-meins = lwa_mara-meins.
+      lwa_data-ekwsl = lwa_mara-ekwsl.
+      lwa_data-raube = lwa_mara-raube.
+      lwa_data-tragr = lwa_mara-tragr.
+      lwa_data-stoff = lwa_mara-stoff.
+      lwa_data-spart = lwa_mara-spart.
+      lwa_data-mstae = lwa_mara-mstae.
+      lwa_data-mfrpn = lwa_mara-mfrpn.
+      lwa_data-mfrnr = lwa_mara-mfrnr.
+* Material Description from MAKT
+      CLEAR: lwa_makt.
+      READ TABLE gt_makt INTO lwa_makt WITH TABLE KEY matnr = lwa_mara-matnr.
+      IF sy-subrc EQ 0.
+        lwa_data-maktx = lwa_makt-maktx.
+        " Fill Material Purchase order text
+        CLEAR: lv_pur_txt. "Added by RPITT DS1K906259 09/03/2022
+        PERFORM f_fill_purchase_txt USING lwa_mara-matnr CHANGING lv_pur_txt.
+        lwa_data-maktg = lv_pur_txt.
+      ENDIF.
+    ENDIF.
+* Sub contract stock at Vendor
+    CLEAR: lwa_mssl.
+    READ TABLE gt_mssl INTO lwa_mssl WITH TABLE KEY k2 COMPONENTS matnr = lwa_mara-matnr
+                                                                  werks = lwa_marc-werks
+                                                                  lifnr = lwa_mara-mfrnr.
+    IF sy-subrc EQ 0.
+      lwa_data-sllab = lwa_mssl-sllab.
+    ENDIF.
+* Tax Indicator
+    CLEAR: lwa_mlan.
+    READ TABLE gt_mlan INTO lwa_mlan WITH TABLE KEY k2 COMPONENTS matnr = lwa_mara-matnr.
+    IF sy-subrc EQ 0.
+      lwa_data-taxim = lwa_mlan-taxim.
+    ENDIF.
+* Get local Currency from Company code
+    READ TABLE gt_t001k INTO lwa_t001k WITH TABLE KEY bwkey = lwa_marc-werks.
+    IF sy-subrc EQ 0.
+      READ TABLE gt_t001 INTO lwa_t001 WITH TABLE KEY bukrs = lwa_t001k-bukrs.
+      IF sy-subrc EQ 0.
+        lwa_data-waers = lwa_t001-waers.
+      ENDIF.
+    ENDIF.
+    lwa_data-werks = lwa_marc-werks.
+    lwa_data-mmsta = lwa_marc-mmsta.
+    lwa_data-maabc = lwa_marc-maabc.
+    lwa_data-kzkri = lwa_marc-kzkri.
+    lwa_data-ekgrp = lwa_marc-ekgrp.
+    lwa_data-dismm = lwa_marc-dismm.
+    lwa_data-dispo = lwa_marc-dispo.
+    lwa_data-plifz = lwa_marc-plifz.
+    lwa_data-webaz = lwa_marc-webaz.
+    lwa_data-disls = lwa_marc-disls.
+    lwa_data-sobsl = lwa_marc-sobsl.
+    lwa_data-minbe = lwa_marc-minbe.
+    lwa_data-bstrf = lwa_marc-bstrf.
+    lwa_data-mabst = lwa_marc-mabst.
+    lwa_data-insmk = lwa_marc-insmk.
+    CLEAR lwa_dd07t.
+    READ TABLE gt_dd07t INTO lwa_dd07t WITH TABLE KEY k2 COMPONENTS domvalue_l = lwa_marc-insmk.
+    IF sy-subrc EQ 0.
+      lwa_data-instx = lwa_dd07t-ddtext.
+    ENDIF.
+    lwa_data-ssqss = lwa_marc-ssqss.
+    lwa_data-ladgr = lwa_marc-ladgr.
+    lwa_data-mtvfp = lwa_marc-mtvfp.
+    lwa_data-kautb = lwa_marc-kautb.
+    lwa_data-prctr = lwa_marc-prctr.
+    lwa_data-trame = lwa_marc-trame + lwa_marc-umlmc. " intransit ( add both in transit as well as plant-plant intransit)
+    lwa_data-disgr = lwa_marc-disgr.
+    lwa_data-qzgtp = lwa_marc-qzgtp.
+    lwa_data-qssys = lwa_marc-qssys.
+    lwa_data-lgfsb = lwa_marc-lgfsb.
+    " Get On Order Stock
+    READ TABLE gt_ekpo INTO lwa_ekpo WITH TABLE KEY k2 COMPONENTS werks = lwa_marc-werks
+                                                                  matnr = lwa_marc-matnr.
+    IF sy-subrc EQ 0.
+      CLEAR: lv_ind6.
+      lv_ind6 = sy-tabix.
+      LOOP AT gt_ekpo USING KEY k2 INTO lwa_ekpo FROM lv_ind6. "#EC CI_NOORDER
+        IF lwa_ekpo-werks = lwa_marc-werks
+       AND lwa_ekpo-matnr = lwa_marc-matnr.
+          LOOP AT gt_eket USING KEY k2 INTO lwa_eket WHERE ebeln = lwa_ekpo-ebeln
+                                                       AND ebelp = lwa_ekpo-ebelp.
+            lv_bwtar = lv_bwtar + lwa_eket-wemng.
+          ENDLOOP.
+          lwa_ord_stock-matnr = lwa_marc-matnr.
+          lwa_ord_stock-werks = lwa_marc-werks.
+          lwa_ord_stock-lgort = lwa_ekpo-lgort.
+          lwa_ord_stock-stock = lwa_ekpo-menge - lv_bwtar.
+          COLLECT lwa_ord_stock INTO lt_ord_stock.
+          CLEAR lv_bwtar.
+        ELSE.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+    " Get Total Reserved Quantity
+    CLEAR: lwa_resb.
+    READ TABLE gt_resb INTO lwa_resb WITH TABLE KEY k2 COMPONENTS matnr = lwa_marc-matnr
+                                                                  werks = lwa_marc-werks.
+    IF sy-subrc EQ 0.
+      CLEAR: lv_ind2.
+      lv_ind2 = sy-tabix.
+      LOOP AT gt_resb USING KEY k2 INTO lwa_resb FROM lv_ind2. "#EC CI_NOORDER
+        IF lwa_resb-matnr = lwa_marc-matnr
+       AND lwa_resb-werks = lwa_marc-werks.
+          IF lwa_resb-shkzg EQ gc_cre OR lwa_resb-shkzg IS INITIAL.
+            lv_tresqty = lwa_resb-bdmng.
+          ELSE.
+            lv_tresqty = lwa_resb-bdmng * -1.
+          ENDIF.
+          lwa_res_stock-matnr = lwa_marc-matnr.
+          lwa_res_stock-werks = lwa_marc-werks.
+          lwa_res_stock-lgort = lwa_resb-lgort.
+          lwa_res_stock-stock = lv_tresqty.
+          COLLECT lwa_res_stock INTO lt_res_stock.
+          CLEAR lv_tresqty.
+        ELSE.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+*** In case of Project stock, there could be no MARD view but still stock posted to a SLOC, hence below logic to append MARD with the missing SLOC
+    LOOP AT gt_mspr USING KEY k2 INTO lwa_mspr WHERE matnr = lwa_marc-matnr AND werks = lwa_marc-werks.
+      READ TABLE gt_mard INTO lwa_mard WITH TABLE KEY k2 COMPONENTS matnr = lwa_marc-matnr
+                                                                    werks = lwa_marc-werks
+                                                                    lgort = lwa_mspr-lgort.
+      IF sy-subrc NE 0.
+        CLEAR lwa_mard.
+        lwa_mard-matnr = lwa_marc-matnr.
+        lwa_mard-werks = lwa_marc-werks.
+        lwa_mard-lgort = lwa_mspr-lgort.
+        " Using exppg field as a indicator that this is a entry added and doesnt exist in MARD.
+        " if this report needs a logic on feild exppg in future then this needs to be changed
+        lwa_mard-exppg = 'Q'.  " Q passed just to indicate its a Q stock
+        INSERT lwa_mard INTO TABLE gt_mard.
+      ENDIF.
+    ENDLOOP.
+*** In case of on order stock, there could be no MARD view but still stock posted to a PO, hence below logic to append MARD with the missing SLOC
+    LOOP AT lt_ord_stock INTO lwa_ord_stock USING KEY primary_key WHERE matnr = lwa_marc-matnr AND werks = lwa_marc-werks.
+      CHECK lwa_ord_stock-lgort IS NOT INITIAL.
+      READ TABLE gt_mard INTO lwa_mard WITH TABLE KEY k2 COMPONENTS matnr = lwa_marc-matnr
+                                                                    werks = lwa_marc-werks
+                                                                    lgort = lwa_ord_stock-lgort.
+      IF sy-subrc NE 0.
+        CLEAR lwa_mard.
+        lwa_mard-matnr = lwa_marc-matnr.
+        lwa_mard-werks = lwa_marc-werks.
+        lwa_mard-lgort = lwa_ord_stock-lgort.
+        " Using exppg field as a indicator that this is a entry added and doesnt exist in MARD.
+        " if this report needs a logic on feild exppg in future then this needs to be changed
+        lwa_mard-exppg = 'Q'.  " Q passed just to indicate its a Q stock
+        INSERT lwa_mard INTO TABLE gt_mard.
+      ENDIF.
+    ENDLOOP.
+    " To idenify first storage location in MARD for same MATNR and WERKS combination
+    lv_first_sloc = 'X'.
+    " Get storage location details.
+    LOOP AT gt_mard INTO lwa_mard USING KEY primary_key WHERE matnr = lwa_marc-matnr AND werks = lwa_marc-werks.
+      lwa_data-lgort = lwa_mard-lgort .
+      lwa_data-labst = lwa_mard-labst .
+      lwa_data-insme = lwa_mard-insme .
+      lwa_data-speme = lwa_mard-speme .
+      lwa_data-einme = lwa_mard-einme.
+      lwa_data-lsobs = lwa_mard-lsobs .
+      lwa_data-lgpbe = lwa_mard-lgpbe .
+      lwa_data-klabs = lwa_mard-klabs .
+      IF lwa_mard-dlinl IS NOT INITIAL.
+        lwa_data-dlinl = lwa_mard-dlinl.
+      ELSE.
+        CLEAR lwa_iseg.
+        READ TABLE gt_iseg INTO lwa_iseg WITH KEY matnr = lwa_marc-matnr
+                                                  werks = lwa_marc-werks.
+        IF sy-subrc = 0.
+          lwa_data-dlinl = lwa_iseg-zldat.
+        ENDIF.
+      ENDIF.
+*** Get On Order Stock ***
+      " Check if PO has storage location
+      CLEAR lwa_data-menge.
+      READ TABLE lt_ord_stock INTO lwa_ord_stock WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = lwa_mard-lgort.
+      IF sy-subrc = 0.
+        " On Order Stock
+        lwa_data-menge = lwa_ord_stock-stock.
+      ELSE.
+        READ TABLE lt_ord_stock INTO lwa_ord_stock WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = space.
+        IF sy-subrc = 0.
+          " check for default storage location
+          READ TABLE gt_mard WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = lwa_marc-lgfsb TRANSPORTING NO FIELDS.
+          IF sy-subrc = 0 AND lwa_marc-lgfsb = lwa_mard-lgort.
+            " On Order Stock
+            lwa_data-menge = lwa_ord_stock-stock.
+            " only for the first location.
+          ELSEIF lv_first_sloc = 'X'.
+            " On Order Stock
+            lwa_data-menge = lwa_ord_stock-stock.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+*** Get On Order Stock ***
+***Get reservation qty ***
+      " Check if reservation has storage location
+      CLEAR lwa_data-tresqty.
+      READ TABLE lt_res_stock INTO lwa_res_stock WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = lwa_mard-lgort.
+      IF sy-subrc = 0.
+        " Reservation qty
+        lwa_data-tresqty = lwa_res_stock-stock.
+      ELSE.
+        READ TABLE lt_res_stock INTO lwa_res_stock WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = space.
+        IF sy-subrc = 0.
+          " check for default storage location
+          READ TABLE gt_mard WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = lwa_marc-lgfsb TRANSPORTING NO FIELDS.
+          IF sy-subrc = 0 AND lwa_marc-lgfsb = lwa_mard-lgort.
+            " Reservation qty
+            lwa_data-tresqty = lwa_res_stock-stock.
+            " only for the first location.
+          ELSEIF lv_first_sloc = 'X'.
+            " Reservation qty
+            lwa_data-tresqty = lwa_res_stock-stock.
+          ENDIF.
+        ENDIF.
+      ENDIF.
+***Get reservation qty ***
+
+      " Check for default storage location exist
+      READ TABLE gt_mard WITH TABLE KEY matnr = lwa_marc-matnr werks = lwa_marc-werks lgort = lwa_marc-lgfsb TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0 AND lwa_marc-lgfsb = lwa_mard-lgort.
+        " GR blocked stock
+        lwa_data-bwesb = lwa_marc-bwesb.
+        " only for the first location.
+      ELSEIF lv_first_sloc = 'X'.
+        " GR blocked stock
+        lwa_data-bwesb = lwa_marc-bwesb.
+      ENDIF.
+      " Last Goods Issue Date
+      READ TABLE gt_s032 INTO lwa_s032 WITH TABLE KEY k2 COMPONENTS matnr = lwa_mard-matnr
+                                                                     werks = lwa_mard-werks
+                                                                     lgort = lwa_mard-lgort.
+      IF sy-subrc = 0.
+        lwa_data-letztabg = lwa_s032-letztabg.
+      ENDIF.
+      " total stock quantity w/o project stock
+      lwa_data-lbkum_m = lwa_mard-labst + lwa_mard-umlme + lwa_mard-insme + lwa_mard-einme + lwa_mard-speme + lwa_mard-retme + lwa_mard-klabs + lwa_mard-kinsm + lwa_mard-keinm + lwa_mard-kspem.
+*** MRP area at Storage location level ***
+      " Indicator: MRP area exists ( at storage location level)
+      IF lwa_marc-diber IS NOT INITIAL AND lwa_mard-exppg NE 'Q'.
+        " indicator to say Project stock exist
+        CALL FUNCTION 'ICON_CREATE'
+          EXPORTING
+            name                  = c_mrp
+          IMPORTING
+            result                = lwa_data-mrp_area
+          EXCEPTIONS
+            icon_not_found        = 1
+            outputfield_too_short = 2
+            OTHERS                = 3.
+        "Fetch MRP Area
+        READ TABLE gt_mdlv INTO lwa_mdlv WITH TABLE KEY k2 COMPONENTS werzg = lwa_mard-werks ortzg = lwa_mard-lgort.
+        IF sy-subrc = 0.
+          READ TABLE gt_mdma INTO lwa_mdma WITH TABLE KEY k2 COMPONENTS matnr = lwa_mard-matnr  berid = lwa_mdlv-berid werks = lwa_mard-werks.
+          IF sy-subrc = 0.
+            IF cb_lvorm IS INITIAL AND lwa_mdma-loekz EQ 'X'.
+              CONTINUE.
+            ENDIF.
+            lwa_data-dismm = lwa_mdma-dismm.
+            lwa_data-dispo = lwa_mdma-dispo.
+            lwa_data-disgr = lwa_mdma-disgr.
+            lwa_data-minbe = lwa_mdma-minbe.
+            lwa_data-disls = lwa_mdma-disls.
+            lwa_data-mabst = lwa_mdma-mabst.
+            lwa_data-bstrf = lwa_mdma-bstrf.
+            lwa_data-plifz = lwa_mdma-plifz.
+          ENDIF.
+        ENDIF.
+        " In case MRP area for the current loop storage location doesnt exist
+        IF lwa_mdma IS INITIAL.
+          CLEAR lwa_data-mrp_area.
+          lwa_data-dismm = lwa_marc-dismm.
+          lwa_data-dispo = lwa_marc-dispo.
+          lwa_data-disgr = lwa_marc-disgr.
+          lwa_data-minbe = lwa_marc-minbe.
+          lwa_data-disls = lwa_marc-disls.
+          lwa_data-mabst = lwa_marc-mabst.
+          lwa_data-bstrf = lwa_marc-bstrf.
+          lwa_data-plifz = lwa_marc-plifz.
+        ENDIF.
+      ENDIF.
+*** MRP area at Storage location level ***
+**** Item data ( Project)****
+      " check if Project stock exist
+      LOOP AT gt_mspr USING KEY k2 INTO lwa_mspr WHERE matnr = lwa_marc-matnr AND werks = lwa_marc-werks AND lgort = lwa_mard-lgort.
+        MOVE lwa_data TO lwa_data_itm.
+        READ TABLE gt_mara INTO lwa_mara WITH KEY matnr = lwa_mchb-matnr.
+        IF sy-subrc = 0.
+          lwa_data_itm-mfrpn  = lwa_mara-mfrpn.
+        ENDIF.
+* >>>End of insert SGADUGULA ENHC0012681
+        " Get the moving avg price for Q stock
+        READ TABLE gt_qbew INTO lwa_qbew WITH TABLE KEY matnr = lwa_marc-matnr bwkey = lwa_marc-werks bwtar = lwa_mspr-charg sobkz = lwa_mspr-sobkz pspnr = lwa_mspr-pspnr.
+        IF sy-subrc = 0.
+          " moving avg price local
+          lwa_data_itm-verpr = lwa_qbew-verpr.
+          " moving avg price group
+          IF lwa_data-waers = gc_usd.
+            lwa_data_itm-vmver = lwa_qbew-verpr.
+          ELSE.
+            PERFORM f_convert_grp_currency USING lwa_data-waers lwa_qbew-verpr CHANGING lwa_data_itm-vmver.
+          ENDIF.
+        ENDIF.
+        " total Project quantity
+        lwa_data-lbkum = lwa_data-lbkum + lwa_mspr-prlab + lwa_mspr-prins + lwa_mspr-prspe.
+        lwa_data_itm-lbkum =  lwa_mspr-prlab + lwa_mspr-prins + lwa_mspr-prspe.
+        " If no stock exist then skip and dont append
+        CHECK lwa_data_itm-lbkum IS NOT INITIAL.
+        " WBS
+        lwa_data_itm-pspnr = lwa_mspr-pspnr.
+        " Special Stock Indicator
+        lwa_data_itm-sobkz = lwa_mspr-sobkz.
+        lwa_data_itm-labst = lwa_mspr-prlab.
+        lwa_data_itm-insme = lwa_mspr-prins.
+        lwa_data_itm-speme = lwa_mspr-prspe.
+        lwa_data_itm-einme = lwa_mspr-prein.
+        lwa_data_itm-bwtar = lwa_mspr-charg.
+        lwa_data_itm-lbkum_m = lwa_data_itm-lbkum.
+        CLEAR: lwa_data_itm-salk3.
+        APPEND lwa_data_itm TO gt_data_itm.
+        CLEAR lwa_data_itm.
+      ENDLOOP.
+      IF sy-subrc = 0.
+        " total stock quantity
+        lwa_data-lbkum_m = lwa_data-lbkum_m + lwa_data-lbkum.
+      ENDIF.
+**** Item data ( Project)****
+      " Total stock value
+      READ TABLE gt_mbew INTO lwa_mbew WITH TABLE KEY matnr = lwa_marc-matnr bwkey = lwa_marc-werks bwtar = space.
+      IF sy-subrc EQ 0.
+        " valuation class
+        lwa_data_itm-bklas = lwa_mbew-bklas.
+        " total stock value = total stock quantity * Moving avg price
+        lwa_data-salk3 = lwa_data-lbkum_m * lwa_mbew-verpr.
+        " moving avg price local
+        lwa_data-verpr = lwa_mbew-verpr.
+        " moving avg price group
+        IF lwa_data-waers = gc_usd.
+          lwa_data-vmver = lwa_mbew-verpr.
+          lwa_data-grpval = lwa_data_itm-salk3. "+DE1K934061 ENHC0011448-Group currency
+        ELSE.
+          PERFORM f_convert_grp_currency USING lwa_data-waers lwa_mbew-verpr CHANGING lwa_data-vmver.
+          PERFORM f_convert_grp_currency USING  lwa_data-waers lwa_data-salk3 CHANGING lwa_data-grpval."+DE1K934061 ENHC0011448-Group currency
+        ENDIF.
+      ENDIF.
+**** Item data ( Batch level)****
+      " Get the Batch
+      LOOP AT gt_mchb INTO lwa_mchb USING KEY k2 WHERE matnr = lwa_mard-matnr AND werks = lwa_mard-werks AND lgort = lwa_mard-lgort.
+        MOVE lwa_data TO lwa_data_itm.
+        READ TABLE gt_mara INTO lwa_mara WITH KEY matnr = lwa_mchb-matnr.
+        IF sy-subrc = 0.
+          lwa_data_itm-mfrpn  = lwa_mara-mfrpn.
+        ENDIF.
+        lwa_data_itm-labst = lwa_mchb-clabs.
+        lwa_data_itm-insme = lwa_mchb-cinsm.
+        lwa_data_itm-speme = lwa_mchb-cspem.
+        lwa_data_itm-einme = lwa_mchb-ceinm.
+        lwa_data_itm-bwtar = lwa_mchb-charg.
+        " Total stock quantity
+        lwa_data_itm-lbkum_m = lwa_mchb-clabs + lwa_mchb-cumlm + lwa_mchb-cinsm + lwa_mchb-ceinm + lwa_mchb-cspem + lwa_mchb-cretm.
+        " Get the Material valuation data
+        READ TABLE gt_mbew INTO lwa_mbew WITH TABLE KEY matnr = lwa_mard-matnr bwkey = lwa_mard-werks bwtar = lwa_mchb-charg.
+        IF sy-subrc EQ 0.
+          " Total stock value
+          lwa_data_itm-salk3 =  lwa_mbew-salk3.
+          lwa_data_itm-verpr = lwa_mbew-verpr.
+
+          " moving avg price group
+          IF lwa_data-waers = gc_usd.
+            lwa_data_itm-vmver  = lwa_data_itm-verpr.
+            lwa_data-grpval = lwa_data_itm-salk3.
+          ELSE.
+            PERFORM f_convert_grp_currency USING lwa_data-waers lwa_mbew-verpr CHANGING lwa_data_itm-vmver.
+            PERFORM f_convert_grp_currency USING  lwa_data-waers lwa_data-salk3 CHANGING lwa_data-grpval.
+          ENDIF.
+        ENDIF.
+        APPEND lwa_data_itm TO gt_data_itm.
+        CLEAR lwa_data_itm.
+      ENDLOOP.
+**** Item data ( Batch level)****
+**** Item data ( Special Stocks from Vendor)****
+      LOOP AT gt_mkol INTO lwa_mkol USING KEY k2 WHERE matnr = lwa_mard-matnr AND werks = lwa_mard-werks AND lgort = lwa_mard-lgort.
+        MOVE lwa_data TO lwa_data_itm.
+        READ TABLE gt_mara INTO lwa_mara WITH KEY matnr = lwa_mard-matnr.
+        IF sy-subrc = 0.
+          lwa_data_itm-mfrpn  = lwa_mara-mfrpn.
+        ENDIF.
+        lwa_data_itm-labst = lwa_mkol-slabs.
+        lwa_data_itm-insme = lwa_mkol-sinsm.
+        lwa_data_itm-speme = lwa_mkol-sspem.
+        lwa_data_itm-einme = lwa_mkol-seinm.
+        lwa_data_itm-bwtar = lwa_mkol-charg.
+        " Vendor
+        lwa_data_itm-lifnr = lwa_mkol-lifnr.
+        " Special Stock Indicator
+        lwa_data_itm-sobkz = lwa_mkol-sobkz.
+        " Total Stock quantity at vendor
+        lwa_data_itm-lbkum_m = lwa_mkol-slabs + lwa_mkol-sinsm + lwa_mkol-seinm + lwa_mkol-sspem.
+        " If no stock exist then skip and dont append
+        CHECK lwa_data_itm-lbkum_m IS NOT INITIAL.
+        " Stock value doesnt exist for Vendor Consignment
+        CLEAR: lwa_data_itm-salk3,lwa_data_itm-verpr, lwa_data_itm-vmver.
+        APPEND lwa_data_itm TO gt_data_itm.
+        CLEAR lwa_data_itm.
+      ENDLOOP.
+**** Item data ( Special Stocks from Vendor)****
+**** Calculate over stock value ( when MRP is at storage location level ****
+      " Indicator: MRP area exists ( at storage location level)
+      IF lwa_marc-diber IS NOT INITIAL AND lwa_mdma IS NOT INITIAL.
+        " Check if total stock quantity is greater than Max stock quantity ( MRP at storage location level)
+        lv_tot_stk_qnt_mard = lwa_data-lbkum_m - ( lwa_mard-klabs + lwa_mard-kinsm + lwa_mard-keinm + lwa_mard-kspem ).
+        IF lv_tot_stk_qnt_mard > lwa_mdma-mabst.
+          " Calculate Over Stock Value
+          " Over Stock Value = ( Total stock quantity - Max stock quantity )* Moving avg price
+          lwa_data-ostkval = ( lv_tot_stk_qnt_mard - lwa_mdma-mabst ) * lwa_data-verpr.
+          PERFORM f_convert_grp_currency USING  lwa_data-waers lwa_data-ostkval CHANGING lwa_data-gostkval. "+DE1K934061 ENHC0011448-Group currency
+          lwa_data-overstock_qty = lv_tot_stk_qnt_mard - lwa_mdma-mabst .
+
+        ENDIF.
+        " For Traffic light logic, calculate stock on hand (Total stock- Project stock)
+        lv_stk_onhand_mard = lwa_data-lbkum_m - lwa_data-lbkum.
+        "Traffic Light Logic
+        PERFORM f_determine_trfc_lgt USING lv_stk_onhand_mard lwa_mdma-dismm  lwa_mdma-minbe lwa_mdma-mabst lwa_data CHANGING lv_trfc_lgt.
+        " Add Traffic light Icon
+        CALL FUNCTION 'ICON_CREATE'
+          EXPORTING
+            name                  = lv_trfc_lgt
+          IMPORTING
+            result                = lwa_data-zstatus
+          EXCEPTIONS
+            icon_not_found        = 1
+            outputfield_too_short = 2
+            OTHERS                = 3.
+      ENDIF.
+**** Calculate over stock value ( when MRP is at storage location level ****
+
+      APPEND lwa_data TO gt_data.
+      " Get total stock quantity at plant level (Remove consignment stock for total stock calculation)
+      lv_tot_stk_qnt =  lwa_data-lbkum_m + lv_tot_stk_qnt - ( lwa_mard-klabs + lwa_mard-kinsm + lwa_mard-keinm + lwa_mard-kspem ).
+      lv_avg_price = lwa_data-verpr.
+      " Get total staock on hand at plant level (Remove prject stock)
+      lv_stk_onhand_marc = lv_stk_onhand_marc + lwa_data-lbkum_m - lwa_data-lbkum.
+      CLEAR: lwa_data-lbkum_m, lwa_data-lbkum, lwa_data-mrp_area, lwa_data-salk3, lwa_data-verpr, lwa_data-vmver,lwa_data-bwesb, lwa_mdma, lwa_mdlv, lv_first_sloc,
+        lv_stk_onhand_mard, lv_trfc_lgt.
+    ENDLOOP.    " Loop at MARD
+
+**** Calculate over stock value and Trafic light ( when MRP is at storage Plant level ) ****
+    " MRP is at plant level
+    IF lwa_marc-diber IS INITIAL.
+      " Check if total stock quantity is greater than Max stock quantity
+      IF lv_tot_stk_qnt > lwa_marc-mabst.
+        " Calculate Over Stock Value
+        " Over Stock Value = ( Total stock quantity - Max stock quantity )* Moving avg price
+        lwa_data-ostkval = ( lv_tot_stk_qnt - lwa_marc-mabst ) * lv_avg_price .
+
+        PERFORM f_convert_grp_currency USING  lwa_data-waers lwa_data-ostkval CHANGING lwa_data-gostkval. "+DE1K934061 ENHC0011448-Group currency
+
+        lwa_data-overstock_qty = lv_tot_stk_qnt - lwa_marc-mabst.
+        " Modify data transporting Over Stock Value
+        MODIFY gt_data FROM lwa_data TRANSPORTING ostkval gostkval overstock_qty WHERE matnr = lwa_data-matnr AND werks = lwa_data-werks.
+        " Modify item data transporting Over Stock Value
+        MODIFY gt_data_itm FROM lwa_data TRANSPORTING ostkval gostkval overstock_qty WHERE matnr = lwa_data-matnr AND werks = lwa_data-werks.
+      ENDIF.
+
+      "Traffic Light Logic
+      PERFORM f_determine_trfc_lgt USING lv_stk_onhand_marc lwa_marc-dismm  lwa_marc-minbe lwa_marc-mabst lwa_data CHANGING lv_trfc_lgt.
+      "Add Traffic light Icon
+      CALL FUNCTION 'ICON_CREATE'
+        EXPORTING
+          name                  = lv_trfc_lgt
+        IMPORTING
+          result                = lwa_data-zstatus
+        EXCEPTIONS
+          icon_not_found        = 1
+          outputfield_too_short = 2
+          OTHERS                = 3.
+      " Modify data transporting status
+      MODIFY gt_data FROM lwa_data TRANSPORTING zstatus WHERE matnr = lwa_data-matnr AND werks = lwa_data-werks.
+
+    ENDIF.
+**** Calculate over stock value ( when MRP is at storage Plant level ) ****
+    CLEAR: lwa_data, lv_tot_stk_qnt,lv_avg_price, lv_stk_onhand_marc, lv_trfc_lgt.
+    REFRESH: lt_ord_stock, lt_res_stock.
+  ENDLOOP.    " Loop at MARC
+  " If the selection screen has Valuation filters then apply the same before output
+  PERFORM f_filter_valuation.
+ENDFORM.                    " F_CALC_DATA1
+
+FORM f_create_alvgrid .
+  DATA:
+    ls_variant TYPE disvariant,
+    l_ccgrp_de TYPE zra_ccgrp_de,
+    l_date(10) TYPE c,
+    l_title    TYPE lvc_title.
+  DATA: lv_quick_info  TYPE stb_button-quickinfo,           "7000000821
+        lv_button_text TYPE stb_button-text.                "7000000821
+  ls_variant-report = sy-repid.
+*---------------------------*
+*   Main container Setup
+*---------------------------*
+  IF cb_det IS NOT INITIAL.
+    CREATE OBJECT cl_custom_container
+      EXPORTING
+*       PARENT                      =
+        container_name              = 'ALVGRID_CNTR'
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5
+        OTHERS                      = 6.
+    IF sy-batch IS INITIAL.
+*   Only use the splitter in the foreground.
+      CREATE OBJECT cl_easy_splitter
+        EXPORTING
+          parent            = cl_custom_container
+          orientation       = cl_gui_easy_splitter_container=>orientation_vertical
+          sash_position     = 65
+        EXCEPTIONS
+          cntl_error        = 1
+          cntl_system_error = 2
+          OTHERS            = 3.
+    ENDIF.
+  ENDIF.
+******************************************************************
+* HEADER
+******************************************************************
+  IF sy-batch IS INITIAL AND cb_det IS NOT INITIAL.
+*   Create ALV class
+    CREATE OBJECT hdr_grid_main
+      EXPORTING
+        i_alv_fieldcat       = gt_hdr_fieldcat[]
+        i_splitter_container = cl_easy_splitter->top_left_container.
+  ELSE.
+*   Create ALV class - no splitter in bkgd
+    CREATE OBJECT hdr_grid_main
+      EXPORTING
+        i_container    = 'ALVGRID_CNTR'
+        i_alv_fieldcat = gt_hdr_fieldcat[].
+    IF cb_det IS NOT INITIAL.
+      APPEND LINES OF gt_data_itm TO gt_data.
+    ENDIF.
+  ENDIF.
+* Set ALV title
+  l_title = 'Material/Plant/Storage Location'(086).
+* set grid layout as required.
+  CALL METHOD hdr_grid_main->set_layout_fields
+    EXPORTING
+      cwidth_opt = 'A'
+      stylefname = 'STYLE'
+      grid_title = l_title
+      sel_mode   = 'D'
+      info_fname = 'LINE_COLOUR'.
+* Suppress grid buttons as required
+  CALL METHOD hdr_grid_main->set_grid_button_display
+    EXPORTING
+      display_copy_button          = space
+      display_cut_button           = space
+      display_delete_row_button    = space
+      display_duplicate_row_button = space
+      display_info_button          = space
+      display_paste_button         = space
+      display_paste_menu_button    = space
+      display_paste_new_row_button = space
+      display_refresh_button       = space
+      display_insert_row_button    = space
+      display_create_row_button    = space.
+* Add Separator.
+  CALL METHOD hdr_grid_main->add_toolbar_button
+    EXPORTING
+      function_code = 'SEPARATOR_01'
+      button_type   = '3'.
+* Add 'Full item list' button.
+  lv_quick_info = TEXT-089.
+  lv_button_text = TEXT-089.
+  CALL METHOD hdr_grid_main->add_toolbar_button
+    EXPORTING
+      function_code = 'FULL_ITM_LIST'
+      quick_info    = lv_quick_info
+      button_type   = '0'
+      text          = lv_button_text.
+* ALV grid first display
+  ls_variant-variant = p_layout.
+  CALL METHOD hdr_grid_main->set_table_for_first_display
+    EXPORTING
+      i_save     = 'U'
+      is_variant = ls_variant
+    CHANGING
+      it_outtab  = gt_data.
+  SET HANDLER hdr_grid_main->handle_double_click FOR ALL INSTANCES.
+  CHECK cb_det IS NOT INITIAL.
+******************************************************************
+* DETAIL
+******************************************************************
+** Don't setup the detail screen for background jobs.
+  CREATE OBJECT det_grid_main
+    EXPORTING
+      i_alv_fieldcat       = gt_dtl_fieldcat[]
+      i_splitter_container = cl_easy_splitter->bottom_right_container.
+  l_title = 'Material/Plant/Storage Location/Batch/Special'(087).
+* Set grid layout as required.
+  CALL METHOD det_grid_main->set_layout_fields
+    EXPORTING
+      zebra      = abap_true
+      cwidth_opt = 'A'
+      stylefname = 'STYLE'
+      grid_title = l_title
+      info_fname = 'LINE_COLOUR'.
+* Suppress grid buttons as required
+  CALL METHOD det_grid_main->set_grid_button_display
+    EXPORTING
+      display_copy_button          = space
+      display_cut_button           = space
+      display_delete_row_button    = space
+      display_duplicate_row_button = space
+      display_graph_button         = space
+      display_info_button          = space
+      display_paste_button         = space
+      display_paste_menu_button    = space
+      display_paste_new_row_button = space
+      display_refresh_button       = space
+      display_insert_row_button    = space
+      display_create_row_button    = space.
+  ls_variant-report  = sy-repid.
+  ls_variant-variant = p_detlay.
+* ALV grid first display
+  CALL METHOD det_grid_main->set_table_for_first_display
+    EXPORTING
+      i_save     = 'U'
+      is_variant = ls_variant
+    CHANGING
+      it_outtab  = gt_data_itm[].
+ENDFORM.                    " F_CREATE_ALVGRID
+
+FORM f_add_fieldcatalog  USING   p_fld_name
+                                  p_sel_text
+                                  p_header_flag
+                                  p_detail_flag.
+  IF p_fld_name EQ 'GRPVAL'(092) OR p_fld_name EQ gc_vmver OR p_fld_name EQ 'GOSTKVAL'(093).
+    gs_hdr_fieldcat-cfieldname = gc_grupc.
+  ELSEIF p_fld_name EQ gc_salk3 OR p_fld_name EQ gc_verpr OR p_fld_name EQ gc_ostkval.
+    gs_hdr_fieldcat-cfieldname = gc_waers.
+  ENDIF.
+  IF p_fld_name EQ 'MAKTG'.
+    gs_hdr_fieldcat-outputlen = 5000.
+  ENDIF.
+  IF p_header_flag EQ abap_true.
+    gs_hdr_fieldcat-fieldname   = p_fld_name.
+    gs_hdr_fieldcat-tabname   = 'GT_DATA'.
+    gs_hdr_fieldcat-seltext  = p_sel_text.
+    gs_hdr_fieldcat-coltext  = p_sel_text.
+    IF p_fld_name = gc_zstatus.
+      gs_hdr_fieldcat-just = 'C'.
+    ENDIF.
+    APPEND gs_hdr_fieldcat TO gt_hdr_fieldcat.
+    CLEAR  gs_hdr_fieldcat.
+  ENDIF.
+  IF p_fld_name EQ 'GRPVAL'(092) OR p_fld_name EQ gc_vmver .
+    gs_hdr_fieldcat-cfieldname = gc_grupc.
+  ELSEIF p_fld_name EQ gc_salk3 OR p_fld_name EQ gc_verpr.
+    gs_hdr_fieldcat-cfieldname = gc_waers.
+  ENDIF.
+  IF p_detail_flag EQ abap_true.
+    gs_hdr_fieldcat-fieldname   = p_fld_name.
+    gs_hdr_fieldcat-tabname   = 'GT_DATA_ITM'.
+    gs_hdr_fieldcat-seltext  = p_sel_text.
+    gs_hdr_fieldcat-coltext  = p_sel_text.
+    APPEND gs_hdr_fieldcat TO gt_dtl_fieldcat.
+    CLEAR  gs_hdr_fieldcat.
+  ENDIF.
+ENDFORM.                    " F_ADD_FIELDCATALOG
+
+FORM f_plant_authorization .
+  DATA lt_werks TYPE STANDARD TABLE OF werks_d.
+  DATA lwa_werks TYPE werks_d.
+  SELECT werks FROM t001w
+  INTO TABLE lt_werks
+  WHERE werks IN s_werks.
+  IF sy-subrc IS INITIAL.
+    LOOP AT lt_werks INTO lwa_werks.
+      AUTHORITY-CHECK OBJECT 'M_MATE_WRK'
+       ID 'WERKS' FIELD lwa_werks.
+      IF sy-subrc IS NOT INITIAL.
+        MESSAGE e024(zpm) WITH lwa_werks .
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+ENDFORM.                    " F_PLANT_AUTHORIZATION
+
+FORM f_convert_grp_currency  USING    p_curr
+                                      p_lamt
+                             CHANGING p_gamt.
+  CALL FUNCTION 'CONVERT_TO_LOCAL_CURRENCY'
+    EXPORTING
+      date             = sy-datum
+      foreign_amount   = p_lamt
+      foreign_currency = p_curr
+      local_currency   = 'USD'
+      type_of_rate     = 'M'
+      read_tcurr       = 'X'
+    IMPORTING
+      local_amount     = p_gamt
+    EXCEPTIONS
+      no_rate_found    = 1
+      overflow         = 2
+      no_factors_found = 3
+      no_spread_found  = 4
+      derived_2_times  = 5
+      OTHERS           = 6.
+ENDFORM.                    " F_CONVERT_GRP_CURRENCY
+
+FORM f_filter_valuation.
+  DATA: lwa_data     TYPE t_data,
+        lwa_data_itm TYPE t_data,
+        lt_data      TYPE TABLE OF t_data.
+  IF s_bwtty IS NOT INITIAL.
+    DELETE gt_data_itm WHERE bwtty NOT IN s_bwtty.
+  ENDIF.
+  IF s_bwtar IS NOT INITIAL.
+    DELETE gt_data_itm WHERE bwtar NOT IN s_bwtar.
+  ENDIF.
+  IF s_bklas IS NOT INITIAL.
+    DELETE gt_data_itm WHERE bklas NOT IN s_bklas.
+  ENDIF.
+
+  IF s_posid IS NOT INITIAL.
+    LOOP AT s_posid.
+      s_pspnr-sign = s_posid-sign.
+      s_pspnr-option = s_posid-option.
+      CALL FUNCTION 'CONVERSION_EXIT_ABPSP_INPUT'
+        EXPORTING
+          input  = s_posid-low
+        IMPORTING
+          output = s_pspnr-low.
+      CALL FUNCTION 'CONVERSION_EXIT_ABPSP_INPUT'
+        EXPORTING
+          input  = s_posid-high
+        IMPORTING
+          output = s_pspnr-high.
+      APPEND s_pspnr.
+    ENDLOOP.
+    DELETE gt_data_itm WHERE pspnr NOT IN s_pspnr.
+  ENDIF.
+  IF s_sobkz IS NOT INITIAL.
+    DELETE gt_data_itm WHERE sobkz NOT IN s_sobkz.
+  ENDIF.
+  IF s_bwtty IS NOT INITIAL OR s_bwtar IS NOT INITIAL OR s_bklas IS NOT INITIAL OR s_posid IS NOT INITIAL OR s_sobkz IS NOT INITIAL.
+    " Filter out records from header ALV
+    LOOP AT gt_data_itm INTO lwa_data_itm.
+      READ TABLE gt_data INTO lwa_data WITH KEY matnr = lwa_data_itm-matnr werks = lwa_data_itm-werks.
+      IF sy-subrc = 0.
+        APPEND lwa_data TO lt_data.
+      ENDIF.
+    ENDLOOP.
+    IF lt_data[] IS NOT INITIAL.
+      REFRESH gt_data.
+      gt_data[] = lt_data[].
+    ENDIF.
+  ENDIF.
+  IF gt_data[] IS INITIAL.
+    MESSAGE 'No output present for given selection'(t02) TYPE 'S' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+  IF gt_data[] IS NOT INITIAL.
+    DELETE gt_data WHERE lgpbe NOT IN s_lgpbe.
+  ENDIF.
+  IF gt_data_itm[] IS NOT INITIAL.
+    DELETE gt_data_itm WHERE lgpbe NOT IN s_lgpbe.
+  ENDIF.
+ENDFORM.                    " F_FILTER_VALUATION
+
+FORM f_determine_trfc_lgt  USING    lv_stk_onhand TYPE mabst
+                                    lv_dismm TYPE dismm
+                                    lv_minbe TYPE minbe
+                                    lv_mabst TYPE mabst
+                                    lwa_data TYPE t_data
+                           CHANGING lv_trfc_lgt TYPE iconname.
+  DATA: lwa_eban TYPE t_eban,
+        lv_matnr TYPE matnr.
+  CASE lv_dismm.
+      "Add Traffic Light Logic –MRP Type V1:
+    WHEN gc_dismm_v1.
+      "Stock on hand equal or greater than Min and Less or Equal to Max
+      IF lv_stk_onhand >= lv_minbe AND lv_stk_onhand <= lv_mabst.
+        lv_trfc_lgt = c_out.
+        "Stock on hand less than Min + Open PO exists
+      ELSEIF lv_stk_onhand < lv_minbe AND lwa_data-menge IS NOT INITIAL.
+        lv_trfc_lgt = c_green.
+        "Stock on hand Greater than Max Stock Level
+      ELSEIF lv_stk_onhand > lv_mabst.
+        lv_trfc_lgt = c_yellow.
+        " Stock on hand less than Min + No Open PO exists
+      ELSEIF lv_stk_onhand < lv_minbe AND lwa_data-menge IS INITIAL.
+        lv_trfc_lgt = c_red.
+      ENDIF.
+      "Add Traffic Light Logic – MRP Type PD:
+    WHEN gc_dismm_pd.
+      "Stock on hand equal to 0 and no Reservation
+      IF lv_stk_onhand IS INITIAL AND lwa_data-tresqty IS INITIAL.
+        lv_trfc_lgt = c_out.
+        "Stock on hand but No Reservation
+      ELSEIF lv_stk_onhand IS NOT INITIAL AND lwa_data-tresqty IS INITIAL.
+        lv_trfc_lgt = c_yellow.
+        "Stock on hand equal or greater than Reservation Quantity
+      ELSEIF lv_stk_onhand >= lwa_data-tresqty.
+        lv_trfc_lgt = c_green.
+        "Stock on hand less than Reservation + No Open PO exists
+      ELSEIF lv_stk_onhand < lwa_data-tresqty AND lwa_data-menge IS INITIAL.
+        lv_trfc_lgt = c_red.
+      ENDIF.
+      "Add Traffic Light Logic – MRP Type ND:
+    WHEN gc_dismm_nd.
+      " add padded zeeros
+      CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+        EXPORTING
+          input        = lwa_data-matnr
+        IMPORTING
+          output       = lv_matnr
+        EXCEPTIONS
+          length_error = 1
+          OTHERS       = 2.
+      " Get Open Requisition
+      READ TABLE gt_eban INTO lwa_eban WITH TABLE KEY k2 COMPONENTS werks = lwa_data-werks
+                                                                    matnr = lv_matnr.
+      "Stock on hand equal to 0 + No Reservations + No Open PO
+      IF lv_stk_onhand IS INITIAL AND lwa_data-tresqty IS INITIAL AND lwa_data-menge IS INITIAL AND lwa_eban-menge IS INITIAL.
+        lv_trfc_lgt = c_out.
+        "Stock on hand = 0 + No Reservations + Open PO (Direct Consumption)
+      ELSEIF lv_stk_onhand IS INITIAL AND lwa_data-tresqty IS INITIAL AND lwa_data-menge IS NOT INITIAL.
+        lv_trfc_lgt = c_green.
+        "Stock on hand = 0 + Open Requisition or Reservation
+      ELSEIF lv_stk_onhand IS INITIAL AND ( lwa_eban-menge IS NOT INITIAL OR lwa_data-tresqty IS NOT INITIAL ) .
+        lv_trfc_lgt = c_yellow.
+        "Stock on hand greater than 0
+      ELSEIF lv_stk_onhand IS NOT INITIAL.
+        lv_trfc_lgt = c_red.
+      ENDIF.
+  ENDCASE.
+ENDFORM.                    " F_DETERMINE_TRFC_LGT
+
+FORM f_fill_purchase_txt  USING    p_matnr TYPE matnr
+                          CHANGING p_pur_txt TYPE string.
+  CONSTANTS: c_sep TYPE c VALUE ','.
+  TYPES: BEGIN OF ty_wrd,
+           line(255) TYPE c,
+         END OF ty_wrd.
+  DATA: lt_txt_output  TYPE TABLE OF tline,
+        lwa_txt_output TYPE tline,
+        lt_sentence    TYPE TABLE OF ty_wrd,
+        lwa_sentence   TYPE ty_wrd,
+        lv_line        TYPE string,
+        lv_size        TYPE i,
+        lv_name        TYPE tdobname,
+        lv_pur_txt     TYPE string,
+        lwa_stxh       TYPE t_stxh.
+  lv_name  = p_matnr.
+  " Get the Material valuation data
+  READ TABLE gt_stxh INTO lwa_stxh WITH TABLE KEY tdname = lv_name.
+  CHECK sy-subrc = 0.
+  " Read the long text
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id       = 'BEST'
+      language = sy-langu
+      name     = lv_name
+      object   = 'MATERIAL'
+    TABLES
+      lines    = lt_txt_output.
+  CHECK sy-subrc = 0.
+*** changes by harvinder for removing Special characters in Long text.
+*** Ticket # 66295, CR # 8000001815.
+*** Special charc = #_$£%&^*~@
+  SELECT SINGLE low
+         FROM tvarvc
+  INTO @DATA(lv_special)
+  WHERE name = 'ZSCM_SPEC_CHARS'.
+
+  DATA(lv_len) = strlen( lv_special ).
+  " Prepare the output table
+  LOOP AT lt_txt_output INTO lwa_txt_output.
+
+    PERFORM remove_special_chars USING lwa_txt_output-tdline
+                                       lv_special
+                                       lv_len.
+    REFRESH lt_sentence.
+    CALL FUNCTION 'RKD_WORD_WRAP'
+      EXPORTING
+        textline            = lwa_txt_output-tdline
+        outputlen           = 75
+      TABLES
+        out_lines           = lt_sentence
+      EXCEPTIONS
+        outputlen_too_large = 1
+        OTHERS              = 2.
+    " Prapare the ALV output field for long text
+    IF sy-subrc = 0.
+      LOOP AT lt_sentence INTO lwa_sentence.
+        lv_line = lwa_sentence-line.
+        CONDENSE lv_line.
+        CHECK strlen( lv_line ) > 0.
+        IF lv_pur_txt IS INITIAL.
+          lv_pur_txt = lv_line.
+        ELSE.
+          CONCATENATE lv_pur_txt lv_line INTO lv_pur_txt SEPARATED BY c_sep.
+        ENDIF.
+        lv_size = strlen( lv_pur_txt ).
+      ENDLOOP.
+    ENDIF.
+  ENDLOOP.
+  p_pur_txt = lv_pur_txt.
+ENDFORM.                    " F_FILL_PURCHASE_TXT
+
+FORM f_display_legend .
+  TYPES: BEGIN OF ty_alvout,
+           mrp     TYPE dismm,
+           trf_lgt TYPE string,
+           tdline  TYPE tdline,
+         END OF ty_alvout.
+  DATA:lo_alv       TYPE REF TO cl_salv_table,
+       ls_alv_disp  TYPE REF TO cl_salv_display_settings,
+       ls_alv_col   TYPE REF TO cl_salv_columns_table,
+       lr_functions TYPE REF TO cl_salv_functions_list,
+       lv_index     TYPE sy-index,
+       lv_trfc_lgt  TYPE iconname.
+  DATA: lr_column TYPE REF TO cl_salv_column_table.
+  DATA: lcl_content TYPE REF TO cl_salv_form_element.
+  DATA:   lcl_grid   TYPE REF TO cl_salv_form_layout_grid.
+  DATA: lt_alvout  TYPE TABLE OF ty_alvout,
+        lwa_alvout TYPE ty_alvout.
+  DATA: lo_sort TYPE REF TO cl_salv_sorts.
+  " Prepare the Legend output table
+  DO 12 TIMES.
+    lv_index = lv_index + 1.
+    IF lv_index = 1.
+      lwa_alvout-mrp = gc_dismm_v1.
+      lv_trfc_lgt = c_out.
+      lwa_alvout-tdline = TEXT-l01.
+    ELSEIF lv_index = 2.
+      lwa_alvout-mrp = gc_dismm_v1.
+      lv_trfc_lgt = c_green.
+      lwa_alvout-tdline = TEXT-l02.
+    ELSEIF lv_index = 3.
+      lwa_alvout-mrp = gc_dismm_v1.
+      lv_trfc_lgt = c_yellow.
+      lwa_alvout-tdline = TEXT-l03.
+    ELSEIF lv_index = 4.
+      lwa_alvout-mrp = gc_dismm_v1.
+      lv_trfc_lgt = c_red.
+      lwa_alvout-tdline = TEXT-l04.
+    ELSEIF lv_index = 5.
+      lwa_alvout-mrp = gc_dismm_pd.
+      lv_trfc_lgt = c_out.
+      lwa_alvout-tdline = TEXT-l05.
+    ELSEIF lv_index = 6.
+      lwa_alvout-mrp = gc_dismm_pd.
+      lv_trfc_lgt = c_green.
+      lwa_alvout-tdline = TEXT-l06.
+    ELSEIF lv_index = 7.
+      lwa_alvout-mrp = gc_dismm_pd.
+      lv_trfc_lgt = c_yellow.
+      lwa_alvout-tdline = TEXT-l07.
+    ELSEIF lv_index = 8.
+      lwa_alvout-mrp = gc_dismm_pd.
+      lv_trfc_lgt = c_red.
+      lwa_alvout-tdline = TEXT-l08.
+    ELSEIF lv_index = 9.
+      lwa_alvout-mrp = gc_dismm_nd.
+      lv_trfc_lgt = c_out.
+      lwa_alvout-tdline = TEXT-l09.
+    ELSEIF lv_index = 10.
+      lwa_alvout-mrp = gc_dismm_nd.
+      lv_trfc_lgt = c_green.
+      lwa_alvout-tdline = TEXT-l10.
+    ELSEIF lv_index = 11.
+      lwa_alvout-mrp = gc_dismm_nd.
+      lv_trfc_lgt = c_yellow.
+      lwa_alvout-tdline = TEXT-l11.
+    ELSEIF lv_index = 12.
+      lwa_alvout-mrp = gc_dismm_nd.
+      lv_trfc_lgt = c_red.
+      lwa_alvout-tdline = TEXT-l12.
+    ENDIF.
+    " Add Traffic light Icon
+    CALL FUNCTION 'ICON_CREATE'
+      EXPORTING
+        name                  = lv_trfc_lgt
+      IMPORTING
+        result                = lwa_alvout-trf_lgt
+      EXCEPTIONS
+        icon_not_found        = 1
+        outputfield_too_short = 2
+        OTHERS                = 3.
+    APPEND  lwa_alvout TO lt_alvout.
+    CLEAR lwa_alvout.
+  ENDDO.
+  " display output in a pop up alv grid
+  CHECK lt_alvout[] IS NOT INITIAL.
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING
+          r_salv_table = lo_alv
+        CHANGING
+          t_table      = lt_alvout[] ).
+    CATCH cx_salv_msg.
+  ENDTRY.
+  lr_functions = lo_alv->get_functions( ).
+  lr_functions->set_sort_asc( 'X' ).
+  lr_functions->set_all( 'X' ).
+  IF lo_alv IS BOUND.
+    " display output in a pop up
+    lo_alv->set_screen_popup(
+      start_column = '25'
+      end_column  = '108'
+      start_line  = '6'
+      end_line    = '20' ).
+    ls_alv_disp = lo_alv->get_display_settings( ).
+    ls_alv_disp->set_fit_column_to_table_size( value = 'X' ).
+    ls_alv_col = lo_alv->get_columns( ).
+    TRY.
+        lr_column ?= ls_alv_col->get_column( 'TRF_LGT' ).
+        lr_column->set_long_text( 'Traffic Light' ).
+        lr_column->set_tooltip( 'Traffic Light' ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+    TRY.
+        lr_column ?= ls_alv_col->get_column( 'TDLINE' ).
+        lr_column->set_long_text( 'Logic' ).
+        lr_column->set_tooltip( 'Logic' ).
+      CATCH cx_salv_not_found.
+    ENDTRY.
+    lo_sort = lo_alv->get_sorts( ).
+*   Set the SORT on the MRP
+    TRY.
+        CALL METHOD lo_sort->add_sort
+          EXPORTING
+            columnname = 'MRP'.
+      CATCH cx_salv_not_found .                         "#EC NO_HANDLER
+      CATCH cx_salv_existing .                          "#EC NO_HANDLER
+      CATCH cx_salv_data_error .                        "#EC NO_HANDLER
+    ENDTRY.
+    ls_alv_col->set_optimize( value = 'X' ).
+*Set top of page
+    CREATE OBJECT lcl_grid.
+    lcl_grid->create_label(
+              row     = 1
+              column  = 40
+              text    = TEXT-hd1 ).
+    lcl_content = lcl_grid.
+    lo_alv->set_top_of_list( lcl_content ).
+    lo_alv->display( ).
+  ENDIF.
+ENDFORM.                    " F_DISPLAY_LEGEND
+
+FORM f_get_mfrpn  USING    p_matnr TYPE matnr
+                  CHANGING p_mfrpn TYPE mfrpn.
+  CONSTANTS: lc_mfrpn(24) TYPE c VALUE 'MANUFACTURER_PART_NUMBER',
+             lc_001(3)    TYPE c VALUE '001',
+             lc_o         TYPE c VALUE 'O'.
+  DATA: lv_mfrpn TYPE atinn,
+        lv_matnr TYPE matnr.
+  CLEAR lv_matnr.
+  CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+    EXPORTING
+      input        = p_matnr
+    IMPORTING
+      output       = lv_matnr
+    EXCEPTIONS
+      length_error = 1
+      OTHERS       = 2.
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+  CLEAR lv_mfrpn.
+  CALL FUNCTION 'CONVERSION_EXIT_ATINN_INPUT'
+    EXPORTING
+      input  = lc_mfrpn
+    IMPORTING
+      output = lv_mfrpn.
+  SELECT atwrt
+    FROM ausp
+    INTO  p_mfrpn UP TO 1 ROWS
+    WHERE objek = lv_matnr AND
+          atinn = lv_mfrpn AND
+          mafid = lc_o AND
+          klart = lc_001.
+  ENDSELECT.
+  IF sy-subrc <> 0.
+    CLEAR p_mfrpn.
+  ENDIF.
+ENDFORM.
+
+FORM remove_special_chars  USING  p_txt_output
+                                  p_special
+                                  p_len.
+  DATA: lv_count TYPE i.
+  DATA(lv_len01) = strlen( p_txt_output ).
+  DO p_len TIMES.
+    REPLACE ALL OCCURRENCES OF
+            p_special+lv_count(1)
+            IN p_txt_output WITH '' .
+    lv_count = lv_count + 1.
+  ENDDO.
+ENDFORM.
+
+MODULE display_report OUTPUT.
+  IF hdr_grid_main IS INITIAL.
+    PERFORM f_create_alvgrid.
+  ELSE.
+    CALL METHOD hdr_grid_main->refresh_table_display.
+  ENDIF.
+ENDMODULE.                 " DISPLAY_REPORT  OUTPUT
+
+MODULE status_9000 OUTPUT.
+  SET PF-STATUS 'ZMMWH_PF'.
+  SET TITLEBAR 'WH'.
+ENDMODULE.                 " STATUS_9000  OUTPUT
+
+MODULE user_command_9000 INPUT.
+  DATA lwa_data TYPE t_data.
+  DATA lt_row        TYPE lvc_t_roid.
+  DATA lwa_row TYPE lvc_s_roid.
+  CALL METHOD hdr_grid_main->get_selected_rows
+    IMPORTING
+      et_row_no = lt_row.
+  READ TABLE lt_row INTO lwa_row INDEX 1.
+  IF sy-subrc IS INITIAL.
+    hdr_grid_main->lv_index = lwa_row-row_id.
+  ENDIF.
+  CASE sy-ucomm.
+    WHEN '&F03' OR '&F15' OR '&F12'.
+      SET SCREEN 0.
+      LEAVE SCREEN.
+    WHEN gc_refresh.
+      REFRESH gt_data.
+* Logic to fetch the data from database tables
+      PERFORM f_get_data.
+* Summarize the data from varioys tables into final internal table
+      PERFORM f_calc_data.
+    WHEN gc_disp.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mm03 AND SKIP FIRST SCREEN.
+      ENDIF.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID : gc_memoryid FIELD space.
+      ENDIF.
+    WHEN gc_chng.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mm02 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_ovrvw.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID : gc_memoryid FIELD lwa_data-matnr,
+                           gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_mmbe AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_matmv.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID : gc_memoryid FIELD lwa_data-matnr,
+                           gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_mb51 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_creql.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID : gc_memoryid FIELD lwa_data-matnr,
+                           gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_md04 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_smrp.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID : gc_memoryid FIELD lwa_data-matnr,
+                           gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_md03 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_dispsl.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID :   gc_memoryid FIELD lwa_data-matnr,
+                             gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_me03 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_maintsl.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID :    gc_memoryid FIELD lwa_data-matnr,
+                              gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_me01 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID : gc_memoryid FIELD space,
+                             gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_inforec.
+*      Read data at item level
+      CALL METHOD det_grid_main->get_selected_rows
+        IMPORTING
+          et_row_no = lt_row.
+      READ TABLE lt_row INTO lwa_row INDEX 1.
+      IF sy-subrc IS INITIAL.
+
+        hdr_grid_main->lv_index = lwa_row-row_id.
+      ELSE.
+        MESSAGE 'Please select line at item level'(t03)  TYPE 'I'.
+        EXIT.
+      ENDIF.
+      READ TABLE gt_data_itm INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID :    gc_memoryid FIELD lwa_data-matnr,
+                              gc_vendor  FIELD  lwa_data-lifnr,
+                              gc_plant    FIELD lwa_data-werks.
+        CALL TRANSACTION gc_me13 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID :    gc_memoryid FIELD space,
+                                gc_vendor  FIELD  space,
+                                gc_plant    FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_matas.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mc9 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_matanreci.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mca AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_purvalan.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mc$4 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_matanal.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mcbe AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_openres.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        SET PARAMETER ID gc_memoryid FIELD lwa_data-matnr.
+        CALL TRANSACTION gc_mb25 AND SKIP FIRST SCREEN.
+        IF sy-subrc EQ 0.
+          SET PARAMETER ID gc_memoryid FIELD space.
+        ENDIF.
+      ENDIF.
+    WHEN gc_openreq.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        " Call the program for TCODE ME5A
+        SUBMIT rm06ba00 USING SELECTION-SCREEN '1000' USING SELECTION-SET 'ZMMWH' WITH ba_matnr EQ lwa_data-matnr
+              WITH s_werks EQ lwa_data-werks AND RETURN.
+        IF sy-subrc EQ 0.
+        ENDIF.
+      ENDIF.
+    WHEN gc_openpo.
+      READ TABLE gt_data INTO lwa_data INDEX hdr_grid_main->lv_index.
+      IF sy-subrc EQ 0.
+        " Call the program for TCODE ME2N
+        SUBMIT rm06en00 USING SELECTION-SCREEN '1000' USING SELECTION-SET 'ZMMWH' WITH s_matnr EQ lwa_data-matnr
+              WITH s_werks EQ lwa_data-werks AND RETURN.
+        IF sy-subrc EQ 0.
+        ENDIF.
+      ENDIF.
+    WHEN gc_legend.
+      " Display Legend for taffic light logic
+      PERFORM f_display_legend.
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_9000  INPUT
